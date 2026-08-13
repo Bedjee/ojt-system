@@ -123,7 +123,7 @@ export default function HrmoLayout({ header, children }) {
                                                 onClick={() => setShowUserDropdown(false)}
                                             >
                                                 <UserCircleIcon className="w-4 h-4 text-gray-400" />
-                                                Profile
+                                                 My Profile
                                             </Link>
                                             <Link
                                                 href={route('logout')}
