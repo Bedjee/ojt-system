@@ -3,6 +3,7 @@ import {
     EnvelopeIcon,
     LockClosedIcon,
     CheckCircleIcon,
+    ArrowRightIcon,
 } from '@heroicons/react/24/outline';
 
 export default function Login({ status, canResetPassword }) {
@@ -22,42 +23,49 @@ export default function Login({ status, canResetPassword }) {
     return (
         <>
             <Head title="Log in - OJT Management" />
-            <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-md w-full space-y-8">
+            <div className="min-h-screen bg-black flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 overflow-hidden">
+                {/* Decorative elements */}
+                <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute -top-40 -right-40 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl"></div>
+                    <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl"></div>
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/5 rounded-full blur-3xl"></div>
+                </div>
+
+                <div className="relative max-w-md w-full space-y-8">
                     {/* Logo / Branding */}
                     <div className="text-center">
                         <div className="flex justify-center">
-                            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
+                            <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-600 flex items-center justify-center text-white font-extrabold text-xl shadow-lg shadow-indigo-500/20">
                                 OJT
                             </div>
                         </div>
-                        <h2 className="mt-4 text-3xl font-extrabold text-gray-900">
+                        <h2 className="mt-4 text-3xl font-extrabold text-white tracking-tight">
                             Welcome Back
                         </h2>
-                        <p className="mt-2 text-sm text-gray-600">
-                            Sign in to your account to continue your OJT journey
+                        <p className="mt-2 text-sm text-gray-400">
+                            Sign in to continue your OJT journey
                         </p>
                     </div>
 
                     {/* Status message */}
                     {status && (
-                        <div className="rounded-lg bg-green-50 p-4 border border-green-200 text-green-700 text-sm flex items-center gap-2">
-                            <CheckCircleIcon className="h-5 w-5 text-green-500" />
+                        <div className="rounded-lg bg-indigo-500/10 p-4 border border-indigo-500/20 text-indigo-300 text-sm flex items-center gap-2">
+                            <CheckCircleIcon className="h-5 w-5 text-indigo-400 flex-shrink-0" />
                             <span>{status}</span>
                         </div>
                     )}
 
                     {/* Login Form */}
-                    <form onSubmit={submit} className="mt-8 space-y-6 bg-white p-6 sm:p-8 rounded-2xl shadow-lg border border-gray-100">
+                    <form onSubmit={submit} className="mt-8 space-y-6 bg-gray-900/50 backdrop-blur-sm p-6 sm:p-8 rounded-2xl border border-gray-800 shadow-xl">
                         <div className="space-y-4">
                             {/* Email */}
                             <div>
-                                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                                <label htmlFor="email" className="block text-sm font-medium text-gray-300">
                                     Email address
                                 </label>
                                 <div className="mt-1 relative">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <EnvelopeIcon className="h-5 w-5 text-gray-400" />
+                                        <EnvelopeIcon className="h-5 w-5 text-gray-500" />
                                     </div>
                                     <input
                                         id="email"
@@ -67,23 +75,23 @@ export default function Login({ status, canResetPassword }) {
                                         onChange={(e) => setData('email', e.target.value)}
                                         autoComplete="username"
                                         autoFocus
-                                        className="pl-10 block w-full rounded-lg border-gray-200 shadow-sm py-2.5 px-4 transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="pl-10 block w-full rounded-lg bg-gray-800/50 border-gray-700 text-white placeholder-gray-500 shadow-sm py-2.5 px-4 transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                         placeholder="you@example.com"
                                     />
                                 </div>
                                 {errors.email && (
-                                    <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                                    <p className="mt-1 text-sm text-red-400">{errors.email}</p>
                                 )}
                             </div>
 
                             {/* Password */}
                             <div>
-                                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                                <label htmlFor="password" className="block text-sm font-medium text-gray-300">
                                     Password
                                 </label>
                                 <div className="mt-1 relative">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <LockClosedIcon className="h-5 w-5 text-gray-400" />
+                                        <LockClosedIcon className="h-5 w-5 text-gray-500" />
                                     </div>
                                     <input
                                         id="password"
@@ -92,36 +100,29 @@ export default function Login({ status, canResetPassword }) {
                                         value={data.password}
                                         onChange={(e) => setData('password', e.target.value)}
                                         autoComplete="current-password"
-                                        className="pl-10 block w-full rounded-lg border-gray-200 shadow-sm py-2.5 px-4 transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="pl-10 block w-full rounded-lg bg-gray-800/50 border-gray-700 text-white placeholder-gray-500 shadow-sm py-2.5 px-4 transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                         placeholder="••••••••"
                                     />
                                 </div>
                                 {errors.password && (
-                                    <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                                    <p className="mt-1 text-sm text-red-400">{errors.password}</p>
                                 )}
                             </div>
 
                             {/* Remember me & Forgot password */}
                             <div className="flex items-center justify-between">
-                                <label className="flex items-center">
+                                <label className="flex items-center cursor-pointer">
                                     <input
                                         type="checkbox"
                                         name="remember"
                                         checked={data.remember}
                                         onChange={(e) => setData('remember', e.target.checked)}
-                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-700 bg-gray-800 rounded"
                                     />
-                                    <span className="ml-2 text-sm text-gray-600">Remember me</span>
+                                    <span className="ml-2 text-sm text-gray-400">Remember me</span>
                                 </label>
 
-                                {canResetPassword && (
-                                    <Link
-                                        href={route('password.request')}
-                                        className="text-sm font-medium text-blue-600 hover:text-blue-500"
-                                    >
-                                        Forgot password?
-                                    </Link>
-                                )}
+
                             </div>
                         </div>
 
@@ -129,7 +130,7 @@ export default function Login({ status, canResetPassword }) {
                         <button
                             type="submit"
                             disabled={processing}
-                            className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full flex justify-center items-center gap-2 py-2.5 px-4 border border-transparent rounded-lg shadow-lg shadow-indigo-500/20 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {processing ? (
                                 <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -137,24 +138,18 @@ export default function Login({ status, canResetPassword }) {
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
                             ) : (
-                                'Sign in'
+                                <>
+                                    Sign in
+                                    <ArrowRightIcon className="w-4 h-4" />
+                                </>
                             )}
                         </button>
 
-                        {/* Register link */}
-                        <div className="text-center text-sm">
-                            <span className="text-gray-600">Don't have an account?</span>{' '}
-                            <Link
-                                href={route('register')}
-                                className="font-medium text-blue-600 hover:text-blue-500"
-                            >
-                                Create one
-                            </Link>
-                        </div>
+
                     </form>
 
-                    {/* Version info (optional) */}
-                    <p className="mt-4 text-center text-xs text-gray-400">
+                    {/* Version info */}
+                    <p className="text-center text-xs text-gray-600">
                         OJT Management System v1.0
                     </p>
                 </div>
