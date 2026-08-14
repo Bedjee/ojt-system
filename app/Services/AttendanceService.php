@@ -263,29 +263,34 @@ protected function determineAction(Carbon $now, Attendance $attendance)
  * Morning: 8:00 AM – 12:00 PM (max 4 hours)
  * Afternoon: 1:00 PM – 5:00 PM (max 4 hours)
  */
+/**
+ * Calculate morning and afternoon hours based on the working schedule.
+ * Morning: 8:00 AM – 12:00 PM (max 4 hours)
+ * Afternoon: 1:00 PM – 5:00 PM (max 4 hours)
+ */
 protected function calculateDailyHours(Attendance $attendance)
 {
     $morningHours = 0;
     $afternoonHours = 0;
 
-    // Define working hours (can be moved to config later)
-    $morningStart = Carbon::createFromTime(8, 0, 0);
-    $morningEnd   = Carbon::createFromTime(12, 0, 0);
-    $afternoonStart = Carbon::createFromTime(13, 0, 0);
-    $afternoonEnd   = Carbon::createFromTime(17, 0, 0);
+    // Anchor schedule to the attendance date
+    $date = $attendance->date;
+
+    $morningStart = Carbon::parse($date->format('Y-m-d') . ' 08:00:00');
+    $morningEnd   = Carbon::parse($date->format('Y-m-d') . ' 12:00:00');
+    $afternoonStart = Carbon::parse($date->format('Y-m-d') . ' 13:00:00');
+    $afternoonEnd   = Carbon::parse($date->format('Y-m-d') . ' 17:00:00');
 
     // ---- Morning ----
     if ($attendance->morning_time_in && $attendance->lunch_time_out) {
         $morningIn  = $attendance->morning_time_in;
         $lunchOut   = $attendance->lunch_time_out;
 
-        // Determine actual start (max of morning_in and morningStart)
         $actualStart = $morningIn->gt($morningStart) ? $morningIn : $morningStart;
-        // Determine actual end (min of lunch_out and morningEnd)
         $actualEnd   = $lunchOut->lt($morningEnd) ? $lunchOut : $morningEnd;
 
         if ($actualEnd->gt($actualStart)) {
-            $morningHours = $actualStart->diffInHours($actualEnd);
+            $morningHours = $actualStart->diffInHours($actualEnd, true); // true = float
         }
     }
 
@@ -298,13 +303,11 @@ protected function calculateDailyHours(Attendance $attendance)
         $actualEnd   = $timeOut->lt($afternoonEnd) ? $timeOut : $afternoonEnd;
 
         if ($actualEnd->gt($actualStart)) {
-            $afternoonHours = $actualStart->diffInHours($actualEnd);
+            $afternoonHours = $actualStart->diffInHours($actualEnd, true);
         }
     }
 
     $totalHours = $morningHours + $afternoonHours;
-    // Total is automatically ≤ 8 because each session is capped at 4.
-    // We'll still keep the global cap for safety.
     $totalHours = min($totalHours, 8);
 
     $attendance->morning_hours   = round($morningHours, 2);
