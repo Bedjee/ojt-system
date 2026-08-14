@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, usePage } from '@inertiajs/react';
+import { Link, usePage, router } from '@inertiajs/react';
 import {
     HomeIcon,
     CameraIcon,
@@ -17,6 +17,8 @@ import { useTheme } from '@/Contexts/ThemeContext';
 export default function TraineeLayout({ header, children }) {
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
     const [showUserDropdown, setShowUserDropdown] = useState(false);
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
     const sidebarRef = useRef(null);
     const user = usePage().props.auth.user;
     const { theme, toggleTheme } = useTheme();
@@ -62,6 +64,16 @@ export default function TraineeLayout({ header, children }) {
     useEffect(() => {
         setMobileSidebarOpen(false);
     }, [usePage().url]);
+
+    const handleLogout = () => {
+        setIsLoggingOut(true);
+        router.post(route('logout'), {}, {
+            onFinish: () => {
+                setIsLoggingOut(false);
+                setShowLogoutModal(false);
+            }
+        });
+    };
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
@@ -185,16 +197,16 @@ export default function TraineeLayout({ header, children }) {
                                     </button>
                                     {showUserDropdown && (
                                         <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg py-1 z-20 border border-gray-100 dark:border-gray-700 overflow-hidden">
-                                            <Link
-                                                href={route('logout')}
-                                                method="post"
-                                                as="button"
+                                            <button
+                                                onClick={() => {
+                                                    setShowUserDropdown(false);
+                                                    setShowLogoutModal(true);
+                                                }}
                                                 className="flex items-center gap-3 w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                                                onClick={() => setShowUserDropdown(false)}
                                             >
                                                 <ArrowRightOnRectangleIcon className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                                                 Log Out
-                                            </Link>
+                                            </button>
                                         </div>
                                     )}
                                 </div>
@@ -313,21 +325,65 @@ export default function TraineeLayout({ header, children }) {
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <Link
-                                        href={route('logout')}
-                                        method="post"
-                                        as="button"
+                                    <button
+                                        onClick={() => {
+                                            setMobileSidebarOpen(false);
+                                            setShowLogoutModal(true);
+                                        }}
                                         className="flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                        onClick={() => setMobileSidebarOpen(false)}
                                     >
                                         <ArrowRightOnRectangleIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
                                         Log Out
-                                    </Link>
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                {/* Logout Confirmation Modal */}
+                {showLogoutModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/70 backdrop-blur-sm transition-opacity duration-200">
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all">
+                            <div className="text-center">
+                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
+                                    <ArrowRightOnRectangleIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                    Confirm Logout
+                                </h3>
+                                <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                                    Are you sure you want to log out of your account? You'll need to sign in again to access your dashboard.
+                                </p>
+                            </div>
+                            <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+                                <button
+                                    onClick={() => setShowLogoutModal(false)}
+                                    className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleLogout}
+                                    disabled={isLoggingOut}
+                                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                    {isLoggingOut ? (
+                                        <>
+                                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Logging out...
+                                        </>
+                                    ) : (
+                                        'Logout'
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Main content with top padding */}
                 <main className="flex-1 pt-16 bg-gray-50 dark:bg-gray-900 transition-colors duration-200">

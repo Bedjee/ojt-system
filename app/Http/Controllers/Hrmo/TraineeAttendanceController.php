@@ -111,27 +111,39 @@ class TraineeAttendanceController extends Controller
         return redirect()->back()->with('success', 'Attendance record deleted.');
     }
 
-    private function calculateHours(Attendance $attendance)
-    {
-        $morningHours = 0;
-        $afternoonHours = 0;
+   private function calculateHours(Attendance $attendance)
+{
+    $morningHours = 0;
+    $afternoonHours = 0;
 
-        if ($attendance->morning_time_in && $attendance->lunch_time_out) {
-            $morningHours = $attendance->morning_time_in->diffInHours($attendance->lunch_time_out);
-        }
-
-        if ($attendance->afternoon_time_in && $attendance->time_out) {
-            $afternoonHours = $attendance->afternoon_time_in->diffInHours($attendance->time_out);
-        }
-
-        $totalHours = $morningHours + $afternoonHours;
-        $totalHours = min($totalHours, 8); // cap at 8 hours per day
-
-        $attendance->morning_hours = round($morningHours, 2);
-        $attendance->afternoon_hours = round($afternoonHours, 2);
-        $attendance->total_hours = round($totalHours, 2);
-        $attendance->status = $totalHours > 0 ? 'present' : 'incomplete';
+    if ($attendance->morning_time_in && $attendance->lunch_time_out) {
+        $morningHours = $attendance->morning_time_in->diffInHours($attendance->lunch_time_out);
     }
+
+    if ($attendance->afternoon_time_in && $attendance->time_out) {
+        $afternoonHours = $attendance->afternoon_time_in->diffInHours($attendance->time_out);
+    }
+
+    $totalHours = $morningHours + $afternoonHours;
+    $totalHours = min($totalHours, 8); // cap at 8 hours per day
+
+    $attendance->morning_hours = round($morningHours, 2);
+    $attendance->afternoon_hours = round($afternoonHours, 2);
+    $attendance->total_hours = round($totalHours, 2);
+
+    // Determine status based on completeness
+    if ($attendance->morning_time_in && $attendance->lunch_time_out &&
+        $attendance->afternoon_time_in && $attendance->time_out) {
+        $attendance->status = 'present';
+    } elseif ($attendance->morning_time_in || $attendance->lunch_time_out ||
+              $attendance->afternoon_time_in || $attendance->time_out) {
+        $attendance->status = 'incomplete';
+    } else {
+        $attendance->status = 'absent';
+    }
+
+    $attendance->save();
+}
 
 
     public function list(Request $request, Trainee $trainee)

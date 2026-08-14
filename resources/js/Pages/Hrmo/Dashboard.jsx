@@ -14,8 +14,29 @@ import {
     XMarkIcon,
     FireIcon,
 } from '@heroicons/react/24/outline';
+import {
+    BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
+    PieChart, Pie, Cell, LineChart, Line, CartesianGrid,
+} from 'recharts';
 
-export default function Dashboard({ stats, trainees, departments, statuses, filters }) {
+// Color palette for charts
+const COLORS = ['#4db85b', '#ffc30d', '#eb4e27', '#EF4444', '#8B5CF6', '#EC4899'];
+
+export default function Dashboard({
+    stats,
+    trainees,
+    departments,
+    statuses,
+    filters,
+    departmentProgress,
+    topTrainees,
+    lowestTrainees,
+    overallProgress,
+    nearCompletionList,
+    attendanceSummary,
+    incompleteRecords,
+    trendData,
+}) {
     const [showFilters, setShowFilters] = useState(false);
     const [mounted, setMounted] = useState(false);
 
@@ -50,6 +71,7 @@ export default function Dashboard({ stats, trainees, departments, statuses, filt
         });
     }
 
+    // Stats cards data
     const statCards = [
         { label: 'Active Trainees', value: stats.totalActive, icon: UserGroupIcon },
         { label: 'Completed Trainees', value: stats.totalCompleted, icon: CheckCircleIcon },
@@ -60,6 +82,7 @@ export default function Dashboard({ stats, trainees, departments, statuses, filt
         { label: 'Attendance Issues', value: stats.attendanceIssues, icon: ExclamationTriangleIcon },
     ];
 
+    // Helper for status badges
     const statusBadge = (status) => {
         const classes = {
             active: 'bg-green-100 text-green-800',
@@ -81,7 +104,21 @@ export default function Dashboard({ stats, trainees, departments, statuses, filt
 
     const inputBase = 'block w-full rounded-lg border-gray-200 shadow-sm py-2.5 px-4 transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent';
 
+    // Near completion list for spotlight
     const nearCompletionTrainees = trainees.filter(t => t.progress >= 80 && t.progress < 100);
+
+    // Prepare data for attendance summary pie chart
+    const attendancePieData = [
+        { name: 'Present', value: attendanceSummary.present },
+        { name: 'Incomplete', value: attendanceSummary.incomplete },
+        { name: 'Absent', value: attendanceSummary.absent },
+    ];
+
+    // Overall progress donut data
+    const overallDonutData = [
+        { name: 'Rendered', value: overallProgress.rendered },
+        { name: 'Remaining', value: overallProgress.required - overallProgress.rendered },
+    ];
 
     return (
         <HrmoLayout header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">HRMO Dashboard</h2>}>
@@ -105,7 +142,7 @@ export default function Dashboard({ stats, trainees, departments, statuses, filt
                         </div>
                     </div>
 
-                    {/* Updated Summary Cards – indigo background with white text */}
+                    {/* Stats Cards */}
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
                         {statCards.map((stat, index) => {
                             const Icon = stat.icon;
@@ -132,7 +169,189 @@ export default function Dashboard({ stats, trainees, departments, statuses, filt
                         })}
                     </div>
 
-                    {/* Near Completion Spotlight */}
+                    {/* ======================== */}
+                    {/* CHARTS SECTION            */}
+                    {/* ======================== */}
+
+                    {/* Row 1: Overall Progress + Attendance Summary */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-2">Overall OJT Progress</h4>
+                            <div className="h-48">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={overallDonutData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            <Cell fill="#4F46E5" />
+                                            <Cell fill="#1a1b1b" />
+                                        </Pie>
+                                        <Tooltip formatter={(value) => `${value} hrs`} />
+                                        <Legend />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <div className="text-center text-sm text-gray-600 mt-1">
+                                {overallProgress.completion}% completed ({overallProgress.rendered} / {overallProgress.required} hrs)
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-2">Today's Attendance Status</h4>
+                            <div className="h-48">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={attendancePieData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            {attendancePieData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip />
+                                        <Legend />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Row 2: Department Progress */}
+                    <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-4">Department Progress</h4>
+                        {departmentProgress.length === 0 ? (
+                            <p className="text-gray-500 text-sm">No departments with data.</p>
+                        ) : (
+                            <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={departmentProgress}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="name" />
+                                        <YAxis />
+                                        <Tooltip formatter={(value) => `${value} hrs`} />
+                                        <Legend />
+                                        <Bar dataKey="rendered" fill="#4F46E5" name="Rendered" />
+                                        <Bar dataKey="required" fill="#131313" name="Required" />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Row 3: Top 3 vs Lowest 5 */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-4">Top 3 Trainees (by rendered hours)</h4>
+                            {topTrainees.length === 0 ? (
+                                <p className="text-gray-500 text-sm">No data.</p>
+                            ) : (
+                                <div className="h-48">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={topTrainees}>
+                                            <XAxis dataKey="name" />
+                                            <YAxis />
+                                            <Tooltip formatter={(value) => `${value} hrs`} />
+                                            <Bar dataKey="rendered" fill="#10B981" name="Rendered" />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            )}
+                        </div>
+                        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-4">Lowest 5 Trainees (by rendered hours)</h4>
+                            {lowestTrainees.length === 0 ? (
+                                <p className="text-gray-500 text-sm">No data.</p>
+                            ) : (
+                                <div className="h-48">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={lowestTrainees}>
+                                            <XAxis dataKey="name" />
+                                            <YAxis />
+                                            <Tooltip formatter={(value) => `${value} hrs`} />
+                                            <Bar dataKey="rendered" fill="#EF4444" name="Rendered" />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Row 4: Daily Attendance Trends */}
+                    <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-4">Daily Attendance Trends (last 30 days)</h4>
+                        {trendData.length === 0 ? (
+                            <p className="text-gray-500 text-sm">No data.</p>
+                        ) : (
+                            <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={trendData}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="date" />
+                                        <YAxis yAxisId="left" />
+                                        <YAxis yAxisId="right" orientation="right" />
+                                        <Tooltip />
+                                        <Legend />
+                                        <Line yAxisId="left" type="monotone" dataKey="total_hours" stroke="#4F46E5" name="Total Hours" />
+                                        <Line yAxisId="right" type="monotone" dataKey="records" stroke="#10B981" name="Records" />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Row 5: Near Completion & Incomplete Records */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-2">Near Completion (≥80%)</h4>
+                            {nearCompletionList.length === 0 ? (
+                                <p className="text-gray-500 text-sm">No trainees in this range.</p>
+                            ) : (
+                                <ul className="divide-y divide-gray-100 max-h-48 overflow-y-auto">
+                                    {nearCompletionList.map((t, i) => (
+                                        <li key={i} className="py-2 flex justify-between text-sm">
+                                            <span>{t.name}</span>
+                                            <span className="text-indigo-600 font-semibold">{t.progress}%</span>
+                                            <span className="text-gray-500">{t.department}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-2">Incomplete Attendance (last 7 days)</h4>
+                            {incompleteRecords.length === 0 ? (
+                                <p className="text-gray-500 text-sm">No incomplete records.</p>
+                            ) : (
+                                <ul className="divide-y divide-gray-100 max-h-48 overflow-y-auto">
+                                    {incompleteRecords.map((rec, i) => (
+                                        <li key={i} className="py-2 flex justify-between text-sm">
+                                            <span>{rec.trainee}</span>
+                                            <span className="text-gray-500">{rec.date}</span>
+                                            <span className="text-yellow-600">{rec.missing}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* ======================== */}
+                    {/* END CHARTS SECTION          */}
+                    {/* ======================== */}
+
+                    {/* Near Completion Spotlight (optional, but we already have it above) */}
                     {nearCompletionTrainees.length > 0 && (
                         <div
                             className={`mb-6 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-2xl shadow-sm border border-indigo-200 p-4 sm:p-6 transition-all duration-700 ${
@@ -253,7 +472,7 @@ export default function Dashboard({ stats, trainees, departments, statuses, filt
                         </div>
                     </div>
 
-                    {/* Monitoring Table (unchanged) */}
+                    {/* Monitoring Table */}
                     <div
                         className={`bg-white overflow-hidden shadow-sm rounded-xl transition-all duration-700 ${
                             mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'

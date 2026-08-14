@@ -11,18 +11,21 @@ use Illuminate\Support\Facades\Log;
 
 class AttendanceCorrectionController extends Controller
 {
-    public function store(Request $request)
-    {
-        $this->authorize('update', Attendance::class);
+   public function store(Request $request)
+{
+    $validated = $request->validate([
+        'attendance_id' => 'required|exists:attendances,id',
+        'field' => 'required|in:morning_time_in,lunch_time_out,afternoon_time_in,time_out',
+        'new_value' => 'nullable|date_format:Y-m-d H:i:s',
+        'reason' => 'required|string|min:5|max:500',
+    ]);
 
-        $validated = $request->validate([
-            'attendance_id' => 'required|exists:attendances,id',
-            'field' => 'required|in:morning_time_in,lunch_time_out,afternoon_time_in,time_out',
-            'new_value' => 'nullable|date_format:Y-m-d H:i:s',
-            'reason' => 'required|string|min:5|max:500',
-        ]);
+    $attendance = Attendance::findOrFail($validated['attendance_id']);
 
-        $attendance = Attendance::findOrFail($validated['attendance_id']);
+    // Now authorize with the actual model instance
+    $this->authorize('update', $attendance);
+
+
 
         // Prevent corrections on completed trainees
         if ($attendance->trainee->status === 'completed') {
@@ -69,26 +72,39 @@ class AttendanceCorrectionController extends Controller
     }
 
     private function recalculateHours(Attendance $attendance)
-    {
-        $morningHours = 0;
-        $afternoonHours = 0;
+{
+    $morningHours = 0;
+    $afternoonHours = 0;
 
-        if ($attendance->morning_time_in && $attendance->lunch_time_out) {
-            $morningHours = $attendance->morning_time_in->diffInHours($attendance->lunch_time_out);
-        }
-
-        if ($attendance->afternoon_time_in && $attendance->time_out) {
-            $afternoonHours = $attendance->afternoon_time_in->diffInHours($attendance->time_out);
-        }
-
-        $totalHours = $morningHours + $afternoonHours;
-
-        $attendance->morning_hours = round($morningHours, 2);
-        $attendance->afternoon_hours = round($afternoonHours, 2);
-        $attendance->total_hours = round($totalHours, 2);
-        $attendance->status = $totalHours > 0 ? 'present' : 'incomplete';
-        $attendance->save();
+    if ($attendance->morning_time_in && $attendance->lunch_time_out) {
+        $morningHours = $attendance->morning_time_in->diffInHours($attendance->lunch_time_out);
     }
+
+    if ($attendance->afternoon_time_in && $attendance->time_out) {
+        $afternoonHours = $attendance->afternoon_time_in->diffInHours($attendance->time_out);
+    }
+
+    $totalHours = $morningHours + $afternoonHours;
+    $totalHours = min($totalHours, 8); // cap at 8 hours per day
+
+    $attendance->morning_hours = round($morningHours, 2);
+    $attendance->afternoon_hours = round($afternoonHours, 2);
+    $attendance->total_hours = round($totalHours, 2);
+
+    // Determine status based on completeness
+    if ($attendance->morning_time_in && $attendance->lunch_time_out &&
+        $attendance->afternoon_time_in && $attendance->time_out) {
+        $attendance->status = 'present';
+    } elseif ($attendance->morning_time_in || $attendance->lunch_time_out ||
+              $attendance->afternoon_time_in || $attendance->time_out) {
+        $attendance->status = 'incomplete';
+    } else {
+        $attendance->status = 'absent';
+    }
+
+    $attendance->save();
+}
+
 
     public function history(Attendance $attendance)
     {

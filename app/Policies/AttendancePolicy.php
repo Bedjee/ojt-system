@@ -17,8 +17,10 @@ class AttendancePolicy
         return $user->isHrmo() || $user->isAdmin() || $user->id === $attendance->trainee->user_id;
     }
 
-    public function update(User $user, Attendance $attendance): bool
-    {
-        return $user->isHrmo() || $user->isAdmin();
-    }
+   public function update(User $user, Attendance $attendance)
+{
+    return $user->isHrmo() || $user->isAdmin();
+}
+
+
 }
