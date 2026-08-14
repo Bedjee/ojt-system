@@ -111,27 +111,51 @@ class TraineeAttendanceController extends Controller
         return redirect()->back()->with('success', 'Attendance record deleted.');
     }
 
-   private function calculateHours(Attendance $attendance)
+/**
+ * Calculate hours using the same working schedule logic.
+ */
+private function calculateHours(Attendance $attendance)
 {
     $morningHours = 0;
     $afternoonHours = 0;
 
+    $morningStart = Carbon::createFromTime(8, 0, 0);
+    $morningEnd   = Carbon::createFromTime(12, 0, 0);
+    $afternoonStart = Carbon::createFromTime(13, 0, 0);
+    $afternoonEnd   = Carbon::createFromTime(17, 0, 0);
+
     if ($attendance->morning_time_in && $attendance->lunch_time_out) {
-        $morningHours = $attendance->morning_time_in->diffInHours($attendance->lunch_time_out);
+        $morningIn  = $attendance->morning_time_in;
+        $lunchOut   = $attendance->lunch_time_out;
+
+        $actualStart = $morningIn->gt($morningStart) ? $morningIn : $morningStart;
+        $actualEnd   = $lunchOut->lt($morningEnd) ? $lunchOut : $morningEnd;
+
+        if ($actualEnd->gt($actualStart)) {
+            $morningHours = $actualStart->diffInHours($actualEnd);
+        }
     }
 
     if ($attendance->afternoon_time_in && $attendance->time_out) {
-        $afternoonHours = $attendance->afternoon_time_in->diffInHours($attendance->time_out);
+        $afternoonIn = $attendance->afternoon_time_in;
+        $timeOut     = $attendance->time_out;
+
+        $actualStart = $afternoonIn->gt($afternoonStart) ? $afternoonIn : $afternoonStart;
+        $actualEnd   = $timeOut->lt($afternoonEnd) ? $timeOut : $afternoonEnd;
+
+        if ($actualEnd->gt($actualStart)) {
+            $afternoonHours = $actualStart->diffInHours($actualEnd);
+        }
     }
 
     $totalHours = $morningHours + $afternoonHours;
-    $totalHours = min($totalHours, 8); // cap at 8 hours per day
+    $totalHours = min($totalHours, 8);
 
-    $attendance->morning_hours = round($morningHours, 2);
+    $attendance->morning_hours   = round($morningHours, 2);
     $attendance->afternoon_hours = round($afternoonHours, 2);
-    $attendance->total_hours = round($totalHours, 2);
+    $attendance->total_hours     = round($totalHours, 2);
 
-    // Determine status based on completeness
+    // Status based on completeness
     if ($attendance->morning_time_in && $attendance->lunch_time_out &&
         $attendance->afternoon_time_in && $attendance->time_out) {
         $attendance->status = 'present';

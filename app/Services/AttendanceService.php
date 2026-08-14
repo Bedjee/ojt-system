@@ -258,27 +258,60 @@ protected function determineAction(Carbon $now, Attendance $attendance)
  * Total is capped at 8 hours per day.
  * Status is determined by completeness of all four fields.
  */
+/**
+ * Calculate morning and afternoon hours based on the working schedule.
+ * Morning: 8:00 AM – 12:00 PM (max 4 hours)
+ * Afternoon: 1:00 PM – 5:00 PM (max 4 hours)
+ */
 protected function calculateDailyHours(Attendance $attendance)
 {
     $morningHours = 0;
     $afternoonHours = 0;
 
+    // Define working hours (can be moved to config later)
+    $morningStart = Carbon::createFromTime(8, 0, 0);
+    $morningEnd   = Carbon::createFromTime(12, 0, 0);
+    $afternoonStart = Carbon::createFromTime(13, 0, 0);
+    $afternoonEnd   = Carbon::createFromTime(17, 0, 0);
+
+    // ---- Morning ----
     if ($attendance->morning_time_in && $attendance->lunch_time_out) {
-        $morningHours = $attendance->morning_time_in->diffInHours($attendance->lunch_time_out);
+        $morningIn  = $attendance->morning_time_in;
+        $lunchOut   = $attendance->lunch_time_out;
+
+        // Determine actual start (max of morning_in and morningStart)
+        $actualStart = $morningIn->gt($morningStart) ? $morningIn : $morningStart;
+        // Determine actual end (min of lunch_out and morningEnd)
+        $actualEnd   = $lunchOut->lt($morningEnd) ? $lunchOut : $morningEnd;
+
+        if ($actualEnd->gt($actualStart)) {
+            $morningHours = $actualStart->diffInHours($actualEnd);
+        }
     }
 
+    // ---- Afternoon ----
     if ($attendance->afternoon_time_in && $attendance->time_out) {
-        $afternoonHours = $attendance->afternoon_time_in->diffInHours($attendance->time_out);
+        $afternoonIn = $attendance->afternoon_time_in;
+        $timeOut     = $attendance->time_out;
+
+        $actualStart = $afternoonIn->gt($afternoonStart) ? $afternoonIn : $afternoonStart;
+        $actualEnd   = $timeOut->lt($afternoonEnd) ? $timeOut : $afternoonEnd;
+
+        if ($actualEnd->gt($actualStart)) {
+            $afternoonHours = $actualStart->diffInHours($actualEnd);
+        }
     }
 
     $totalHours = $morningHours + $afternoonHours;
-    $totalHours = min($totalHours, 8); // cap at 8 hours per day
+    // Total is automatically ≤ 8 because each session is capped at 4.
+    // We'll still keep the global cap for safety.
+    $totalHours = min($totalHours, 8);
 
-    $attendance->morning_hours = round($morningHours, 2);
+    $attendance->morning_hours   = round($morningHours, 2);
     $attendance->afternoon_hours = round($afternoonHours, 2);
-    $attendance->total_hours = round($totalHours, 2);
+    $attendance->total_hours     = round($totalHours, 2);
 
-    // Determine status based on completeness
+    // Status based on completeness
     if ($attendance->morning_time_in && $attendance->lunch_time_out &&
         $attendance->afternoon_time_in && $attendance->time_out) {
         $attendance->status = 'present';
