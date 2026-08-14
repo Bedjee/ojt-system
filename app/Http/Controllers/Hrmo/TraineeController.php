@@ -122,4 +122,18 @@ class TraineeController extends Controller
         return redirect()->route('hrmo.trainees.index')
             ->with('success', 'Trainee deleted successfully.');
     }
+
+public function resetPassword(Trainee $trainee)
+{
+    $this->authorize('update', $trainee);
+
+    $defaultPassword = 'password123';
+    $trainee->user->update([
+        'password' => Hash::make($defaultPassword),
+        'must_change_password' => true,
+    ]);
+
+    return redirect()->back()->with('success', 'Password reset to default. Trainee must change it on next login.');
+}
+
 }

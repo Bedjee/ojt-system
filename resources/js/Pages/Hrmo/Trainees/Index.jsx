@@ -1,5 +1,5 @@
 import HrmoLayout from '@/Layouts/HrmoLayout';
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import {
     UserPlusIcon,
@@ -9,14 +9,15 @@ import {
     PencilSquareIcon,
     TrashIcon,
     UserGroupIcon,
+    CalendarIcon,
+    KeyIcon,
     CheckCircleIcon,
-    ClockIcon,
-    ExclamationTriangleIcon,
-    CalendarIcon, // <-- added
+    ExclamationCircleIcon,
 } from '@heroicons/react/24/outline';
 
 export default function Index({ trainees, departments, statuses, filters }) {
     const [showFilters, setShowFilters] = useState(false);
+    const { flash } = usePage().props; // get flash messages
 
     const { data, setData, get } = useForm({
         search: filters?.search || '',
@@ -48,7 +49,12 @@ export default function Index({ trainees, departments, statuses, filters }) {
         }
     }
 
-    // Helper for status badge
+    function handleResetPassword(id) {
+        if (confirm('Reset password for this trainee to default (password123)?')) {
+            router.post(route('hrmo.trainees.reset-password', id));
+        }
+    }
+
     const statusBadge = (status) => {
         const classes = {
             active: 'bg-green-100 text-green-800',
@@ -64,6 +70,21 @@ export default function Index({ trainees, departments, statuses, filters }) {
             <Head title="Trainees" />
             <div className="py-6 sm:py-8 px-4 sm:px-6 lg:px-8">
                 <div className="max-w-7xl mx-auto">
+                    {/* Flash Messages */}
+                    {flash?.success && (
+                        <div className="mb-4 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg flex items-center gap-2">
+                            <CheckCircleIcon className="w-5 h-5 flex-shrink-0" />
+                            <span>{flash.success}</span>
+                        </div>
+                    )}
+                    {flash?.error && (
+                        <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg flex items-center gap-2">
+                            <ExclamationCircleIcon className="w-5 h-5 flex-shrink-0" />
+                            <span>{flash.error}</span>
+                        </div>
+                    )}
+
+
                     {/* Human‑centered header */}
                     <div className="mb-6 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl shadow-sm border border-indigo-100 p-4 sm:p-6">
                         <div className="flex items-start justify-between flex-wrap gap-4">
@@ -195,32 +216,40 @@ export default function Index({ trainees, departments, statuses, filters }) {
                                                     </span>
                                                 </td>
                                                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">
-                                                    <div className="flex items-center justify-center gap-2">
-                                                        {/* Manage Attendance (calendar icon) */}
-                                                        <Link
-                                                            href={route('hrmo.trainees.attendance.index', trainee.id)}
-                                                            className="text-blue-600 hover:text-blue-800 transition-colors"
-                                                            title="Manage Attendance"
-                                                        >
-                                                            <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                                                        </Link>
-                                                        {/* Edit */}
-                                                        <Link
-                                                            href={route('hrmo.trainees.edit', trainee.id)}
-                                                            className="text-indigo-600 hover:text-indigo-800 transition-colors"
-                                                            title="Edit"
-                                                        >
-                                                            <PencilSquareIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                                                        </Link>
-                                                        {/* Delete */}
-                                                        <button
-                                                            onClick={() => handleDelete(trainee.id)}
-                                                            className="text-red-600 hover:text-red-800 transition-colors"
-                                                            title="Delete"
-                                                        >
-                                                            <TrashIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                                                        </button>
-                                                    </div>
+                                                   <div className="flex items-center justify-center gap-2">
+    <Link
+        href={route('hrmo.trainees.attendance.index', trainee.id)}
+        className="text-blue-600 hover:text-blue-800 transition-colors"
+        title="Manage Attendance"
+    >
+        <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+    </Link>
+    <Link
+        href={route('hrmo.trainees.edit', trainee.id)}
+        className="text-indigo-600 hover:text-indigo-800 transition-colors"
+        title="Edit"
+    >
+        <PencilSquareIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+    </Link>
+    <button
+        onClick={() => handleDelete(trainee.id)}
+        className="text-red-600 hover:text-red-800 transition-colors"
+        title="Delete"
+    >
+        <TrashIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+    </button>
+    <button
+        onClick={() => {
+            if (confirm('Reset password for this trainee to default (password123)?')) {
+                router.post(route('hrmo.trainees.reset-password', trainee.id));
+            }
+        }}
+        className="text-yellow-600 hover:text-yellow-800 transition-colors"
+        title="Reset Password"
+    >
+        <KeyIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+    </button>
+</div>
                                                 </td>
                                             </tr>
                                         ))

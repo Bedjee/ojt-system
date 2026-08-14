@@ -71,6 +71,9 @@ Route::delete('/trainees/{trainee}/attendance/{attendance}', [\App\Http\Controll
 
     Route::get('/trainees/{trainee}/attendance-records', [\App\Http\Controllers\Hrmo\TraineeAttendanceController::class, 'list'])
     ->name('trainees.attendance-records.index');
+
+    Route::post('/trainees/{trainee}/reset-password', [\App\Http\Controllers\Hrmo\TraineeController::class, 'resetPassword'])
+    ->name('trainees.reset-password');
     });
 
     // Trainee routes

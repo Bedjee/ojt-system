@@ -1,12 +1,16 @@
 import { Head, Link, useForm } from '@inertiajs/react';
+import { useState } from 'react';
 import {
     EnvelopeIcon,
     LockClosedIcon,
     CheckCircleIcon,
     ArrowRightIcon,
+    EyeIcon,
+    EyeSlashIcon,
 } from '@heroicons/react/24/outline';
 
 export default function Login({ status, canResetPassword }) {
+    const [showPassword, setShowPassword] = useState(false);
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
@@ -18,6 +22,10 @@ export default function Login({ status, canResetPassword }) {
         post(route('login'), {
             onFinish: () => reset('password'),
         });
+    };
+
+    const togglePasswordVisibility = () => {
+        setShowPassword(!showPassword);
     };
 
     return (
@@ -95,14 +103,28 @@ export default function Login({ status, canResetPassword }) {
                                     </div>
                                     <input
                                         id="password"
-                                        type="password"
+                                        type={showPassword ? 'text' : 'password'}
                                         name="password"
                                         value={data.password}
                                         onChange={(e) => setData('password', e.target.value)}
                                         autoComplete="current-password"
-                                        className="pl-10 block w-full rounded-lg bg-gray-800/50 border-gray-700 text-white placeholder-gray-500 shadow-sm py-2.5 px-4 transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                        className="pl-10 pr-10 block w-full rounded-lg bg-gray-800/50 border-gray-700 text-white placeholder-gray-500 shadow-sm py-2.5 px-4 transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                         placeholder="••••••••"
                                     />
+                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                        <button
+                                            type="button"
+                                            onClick={togglePasswordVisibility}
+                                            className="text-gray-400 hover:text-gray-200 focus:outline-none transition-colors"
+                                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                        >
+                                            {showPassword ? (
+                                                <EyeSlashIcon className="h-5 w-5" />
+                                            ) : (
+                                                <EyeIcon className="h-5 w-5" />
+                                            )}
+                                        </button>
+                                    </div>
                                 </div>
                                 {errors.password && (
                                     <p className="mt-1 text-sm text-red-400">{errors.password}</p>
@@ -121,8 +143,6 @@ export default function Login({ status, canResetPassword }) {
                                     />
                                     <span className="ml-2 text-sm text-gray-400">Remember me</span>
                                 </label>
-
-
                             </div>
                         </div>
 
@@ -144,8 +164,6 @@ export default function Login({ status, canResetPassword }) {
                                 </>
                             )}
                         </button>
-
-
                     </form>
 
                     {/* Version info */}
