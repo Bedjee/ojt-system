@@ -28,6 +28,7 @@ export default function TraineeLayout({ header, children }) {
         { name: 'Scan Attendance', route: 'trainee.scan.index', icon: CameraIcon },
         { name: 'My Calendar', route: 'trainee.attendance.index', icon: CalendarDaysIcon },
         { name: 'My Profile', route: 'trainee.profile.edit', icon: UserIcon },
+        { name: 'My DTR', route: 'trainee.dtr.index', icon: CalendarDaysIcon },
     ];
 
     const isActive = (routeName) => route().current(routeName);

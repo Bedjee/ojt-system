@@ -87,6 +87,9 @@ Route::delete('/trainees/{trainee}/attendance/{attendance}', [\App\Http\Controll
     Route::get('/profile', [\App\Http\Controllers\Trainee\ProfileController::class, 'edit'])->name('profile.edit');
 Route::put('/profile', [\App\Http\Controllers\Trainee\ProfileController::class, 'update'])->name('profile.update');
 
+Route::get('/dtr', [\App\Http\Controllers\Trainee\DtrController::class, 'index'])->name('dtr.index');
+Route::get('/dtr/download', [\App\Http\Controllers\Trainee\DtrController::class, 'download'])->name('dtr.download');
+
 });
 });
 

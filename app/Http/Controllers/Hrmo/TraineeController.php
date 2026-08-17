@@ -15,29 +15,63 @@ use Inertia\Inertia;
 
 class TraineeController extends Controller
 {
-    public function index()
-    {
-        $this->authorize('viewAny', Trainee::class);
+public function index(Request $request)
+{
+    $this->authorize('viewAny', Trainee::class);
 
-        $trainees = Trainee::with('user', 'department')
-            ->latest()
-            ->paginate(10)
-            ->through(fn($trainee) => [
-                'id' => $trainee->id,
-                'full_name' => $trainee->full_name,
-                'email' => $trainee->email,
-                'school' => $trainee->school,
-                'course' => $trainee->course,
-                'department' => $trainee->department?->name ?? 'N/A',
-                'status' => $trainee->status,
-                'start_date' => $trainee->start_date->format('Y-m-d'),
-                'required_hours' => $trainee->required_hours,
-            ]);
+    $query = Trainee::with('user', 'department');
 
-        return Inertia::render('Hrmo/Trainees/Index', [
-            'trainees' => $trainees,
-        ]);
+    // Search filter
+    if ($request->filled('search')) {
+        $search = $request->search;
+        $query->where(function ($q) use ($search) {
+            $q->where('first_name', 'LIKE', "%{$search}%")
+                ->orWhere('last_name', 'LIKE', "%{$search}%")
+                ->orWhere('email', 'LIKE', "%{$search}%");
+        });
     }
+
+    // Department filter
+    if ($request->filled('department')) {
+        $query->where('department_id', $request->department);
+    }
+
+    // Status filter
+    if ($request->filled('status')) {
+        $query->where('status', $request->status);
+    }
+
+    $trainees = $query->latest()
+        ->paginate(10)
+        ->withQueryString() // ✅ this ensures pagination links keep query parameters
+        ->through(fn($trainee) => [
+            'id' => $trainee->id,
+            'full_name' => $trainee->full_name,
+            'email' => $trainee->email,
+            'school' => $trainee->school,
+            'course' => $trainee->course,
+            'department' => $trainee->department?->name ?? 'N/A',
+            'status' => $trainee->status,
+            'start_date' => $trainee->start_date->format('Y-m-d'),
+            'required_hours' => $trainee->required_hours,
+        ]);
+
+    $departments = Department::where('is_active', true)
+        ->orderBy('name')
+        ->get(['id', 'name']);
+
+    $statuses = ['active', 'completed', 'cancelled', 'on_hold'];
+
+    return Inertia::render('Hrmo/Trainees/Index', [
+        'trainees' => $trainees,
+        'filters' => $request->only(['search', 'department', 'status']),
+        'departments' => $departments,
+        'statuses' => $statuses,
+    ]);
+}
+
+
+
 
    public function create()
 {
@@ -95,21 +129,38 @@ class TraineeController extends Controller
 
 
     public function update(TraineeRequest $request, Trainee $trainee)
-    {
-        $this->authorize('update', $trainee);
+{
+    $this->authorize('update', $trainee);
 
-        $validated = $request->validated();
+    $validated = $request->validated();
 
-        // Update user email if changed
-        if ($trainee->email !== $validated['email']) {
-            $trainee->user->update(['email' => $validated['email'], 'name' => $validated['first_name'] . ' ' . $validated['last_name']]);
-        }
+    // Update trainee record with all validated fields (only those present)
+    $trainee->update($validated);
 
-        $trainee->update($validated);
+    // Sync user account if email or name changed
+    $userUpdate = [];
 
-        return redirect()->route('hrmo.trainees.index')
-            ->with('success', 'Trainee updated successfully.');
+    // Email
+    if (isset($validated['email']) && $trainee->user->email !== $validated['email']) {
+        $userUpdate['email'] = $validated['email'];
     }
+
+    // Name (first and last)
+    if (isset($validated['first_name']) || isset($validated['last_name'])) {
+        $firstName = $validated['first_name'] ?? $trainee->first_name;
+        $lastName = $validated['last_name'] ?? $trainee->last_name;
+        $userUpdate['name'] = trim($firstName . ' ' . $lastName);
+    }
+
+    if (!empty($userUpdate)) {
+        $trainee->user->update($userUpdate);
+    }
+
+    return redirect()->route('hrmo.trainees.index')
+        ->with('success', 'Trainee updated successfully.');
+}
+
+
 
     public function destroy(Trainee $trainee)
     {

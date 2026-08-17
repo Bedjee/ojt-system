@@ -1,11 +1,10 @@
 import HrmoLayout from '@/Layouts/HrmoLayout';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     UserPlusIcon,
     MagnifyingGlassIcon,
     AdjustmentsHorizontalIcon,
-    XMarkIcon,
     PencilSquareIcon,
     TrashIcon,
     UserGroupIcon,
@@ -16,30 +15,48 @@ import {
 } from '@heroicons/react/24/outline';
 
 export default function Index({ trainees, departments, statuses, filters }) {
-    const [showFilters, setShowFilters] = useState(false);
-    const { flash } = usePage().props; // get flash messages
+    const { flash } = usePage().props;
 
-    const { data, setData, get } = useForm({
+    // Keep filters open if any filter is active
+    const hasActiveFilters = filters?.search || filters?.department || filters?.status;
+    const [showFilters, setShowFilters] = useState(!!hasActiveFilters);
+
+    const { data, setData, get, processing } = useForm({
         search: filters?.search || '',
         department: filters?.department || '',
         status: filters?.status || '',
     });
 
+    // Sync form with URL filters when they change (e.g., via pagination)
+    useEffect(() => {
+        setData({
+            search: filters?.search || '',
+            department: filters?.department || '',
+            status: filters?.status || '',
+        });
+        const hasFilters = filters?.search || filters?.department || filters?.status;
+        setShowFilters(!!hasFilters);
+    }, [filters]);
+
     function handleFilterSubmit(e) {
         e.preventDefault();
-        get(route('hrmo.trainees.index'), data);
+        get(route('hrmo.trainees.index'), data, {
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                const hasFilters = data.search || data.department || data.status;
+                setShowFilters(!!hasFilters);
+            },
+        });
     }
 
     function resetFilters() {
-        setData({
-            search: '',
-            department: '',
-            status: '',
-        });
-        get(route('hrmo.trainees.index'), {
-            search: '',
-            department: '',
-            status: '',
+        const resetData = { search: '', department: '', status: '' };
+        setData(resetData);
+        get(route('hrmo.trainees.index'), resetData, {
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: () => setShowFilters(false),
         });
     }
 
@@ -60,7 +77,7 @@ export default function Index({ trainees, departments, statuses, filters }) {
             active: 'bg-green-100 text-green-800',
             completed: 'bg-blue-100 text-blue-800',
             cancelled: 'bg-red-100 text-red-800',
-            pending: 'bg-yellow-100 text-yellow-800',
+            on_hold: 'bg-yellow-100 text-yellow-800',
         };
         return classes[status] || 'bg-gray-100 text-gray-800';
     };
@@ -83,7 +100,6 @@ export default function Index({ trainees, departments, statuses, filters }) {
                             <span>{flash.error}</span>
                         </div>
                     )}
-
 
                     {/* Human‑centered header */}
                     <div className="mb-6 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl shadow-sm border border-indigo-100 p-4 sm:p-6">
@@ -141,7 +157,7 @@ export default function Index({ trainees, departments, statuses, filters }) {
                                                 className="mt-1 w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                             >
                                                 <option value="">All Departments</option>
-                                                {departments?.map((dept) => (
+                                                {departments.map((dept) => (
                                                     <option key={dept.id} value={dept.id}>{dept.name}</option>
                                                 ))}
                                             </select>
@@ -154,7 +170,7 @@ export default function Index({ trainees, departments, statuses, filters }) {
                                                 className="mt-1 w-full border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                             >
                                                 <option value="">All Statuses</option>
-                                                {statuses?.map((status) => (
+                                                {statuses.map((status) => (
                                                     <option key={status} value={status}>
                                                         {status.charAt(0).toUpperCase() + status.slice(1)}
                                                     </option>
@@ -166,6 +182,7 @@ export default function Index({ trainees, departments, statuses, filters }) {
                                         <button
                                             type="submit"
                                             className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+                                            disabled={processing}
                                         >
                                             Apply Filters
                                         </button>
@@ -216,40 +233,36 @@ export default function Index({ trainees, departments, statuses, filters }) {
                                                     </span>
                                                 </td>
                                                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">
-                                                   <div className="flex items-center justify-center gap-2">
-    <Link
-        href={route('hrmo.trainees.attendance.index', trainee.id)}
-        className="text-blue-600 hover:text-blue-800 transition-colors"
-        title="Manage Attendance"
-    >
-        <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-    </Link>
-    <Link
-        href={route('hrmo.trainees.edit', trainee.id)}
-        className="text-indigo-600 hover:text-indigo-800 transition-colors"
-        title="Edit"
-    >
-        <PencilSquareIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-    </Link>
-    <button
-        onClick={() => handleDelete(trainee.id)}
-        className="text-red-600 hover:text-red-800 transition-colors"
-        title="Delete"
-    >
-        <TrashIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-    </button>
-    <button
-        onClick={() => {
-            if (confirm('Reset password for this trainee to default (password123)?')) {
-                router.post(route('hrmo.trainees.reset-password', trainee.id));
-            }
-        }}
-        className="text-yellow-600 hover:text-yellow-800 transition-colors"
-        title="Reset Password"
-    >
-        <KeyIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-    </button>
-</div>
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <Link
+                                                            href={route('hrmo.trainees.attendance.index', trainee.id)}
+                                                            className="text-blue-600 hover:text-blue-800 transition-colors"
+                                                            title="Manage Attendance"
+                                                        >
+                                                            <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                                        </Link>
+                                                        <Link
+                                                            href={route('hrmo.trainees.edit', trainee.id)}
+                                                            className="text-indigo-600 hover:text-indigo-800 transition-colors"
+                                                            title="Edit"
+                                                        >
+                                                            <PencilSquareIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                                        </Link>
+                                                        <button
+                                                            onClick={() => handleDelete(trainee.id)}
+                                                            className="text-red-600 hover:text-red-800 transition-colors"
+                                                            title="Delete"
+                                                        >
+                                                            <TrashIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleResetPassword(trainee.id)}
+                                                            className="text-yellow-600 hover:text-yellow-800 transition-colors"
+                                                            title="Reset Password"
+                                                        >
+                                                            <KeyIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))
@@ -258,7 +271,7 @@ export default function Index({ trainees, departments, statuses, filters }) {
                             </table>
                         </div>
 
-                        {/* Pagination */}
+                        {/* Pagination – with preserved query string */}
                         {trainees.links && trainees.links.length > 3 && (
                             <div className="px-4 py-3 sm:px-6 border-t border-gray-200">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -281,6 +294,8 @@ export default function Index({ trainees, departments, statuses, filters }) {
                                                 onClick={(e) => {
                                                     if (!link.url) e.preventDefault();
                                                 }}
+                                                preserveState
+                                                preserveScroll
                                             />
                                         ))}
                                     </div>
