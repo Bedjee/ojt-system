@@ -18,7 +18,7 @@ export default function ChangePassword() {
 
     function handleSubmit(e) {
         e.preventDefault();
-        post(route('password.update'));
+        post(route('password.change.update'));
     }
 
     // Dynamic classes based on theme

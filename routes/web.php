@@ -27,7 +27,7 @@ Route::middleware(['auth', 'verified', 'must.change.password'])->group(function 
 
     // Password change routes (explicitly allowed by the middleware)
     Route::get('/password/change', [PasswordChangeController::class, 'show'])->name('password.change');
-    Route::post('/password/change', [PasswordChangeController::class, 'update'])->name('password.update');
+   Route::post('/password/change', [PasswordChangeController::class, 'update'])->name('password.change.update');
 
     // Profile routes (from Breeze)
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
