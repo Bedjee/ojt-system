@@ -27,7 +27,13 @@ import {
 
 export default function Index({ records, attendanceDates, filters, statuses }) {
     const [selectedDate, setSelectedDate] = useState(null);
-    const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [currentMonth, setCurrentMonth] = useState(() => {
+        if (filters?.date_from) {
+            const from = new Date(filters.date_from);
+            if (!isNaN(from)) return from;
+        }
+        return new Date();
+    });
 
     const { data, setData, get } = useForm({
         date_from: filters.date_from || '',
@@ -48,15 +54,6 @@ export default function Index({ records, attendanceDates, filters, statuses }) {
         get(route('trainee.attendance.index'), { date_from: from, date_to: to, status: data.status });
     };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (data.date_from && data.date_to) {
-            const from = new Date(data.date_from);
-            if (!isNaN(from)) setCurrentMonth(from);
-        }
-        get(route('trainee.attendance.index'), data);
-    };
-
     const resetFilters = () => {
         setData({
             date_from: '',
@@ -70,6 +67,19 @@ export default function Index({ records, attendanceDates, filters, statuses }) {
             status: '',
         });
     };
+
+
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (data.date_from && data.date_to) {
+            const from = new Date(data.date_from);
+            if (!isNaN(from)) setCurrentMonth(from);
+        }
+        get(route('trainee.attendance.index'), data);
+    };
+
+
 
     const handleExport = () => {
         const params = new URLSearchParams();

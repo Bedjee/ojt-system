@@ -12,19 +12,25 @@ import {
     XCircleIcon,
 } from '@heroicons/react/24/outline';
 
-export default function Index({ trainee, records, month, date_from, date_to, summary }) {
+export default function Index({ trainee, records, month, half, summary }) {
     const { data, setData, get } = useForm({
         month: month,
+        half: half || 'first',
     });
 
     function handleMonthChange(e) {
         const newMonth = e.target.value;
         setData('month', newMonth);
-        get(route('trainee.dtr.index'), { month: newMonth });
+        get(route('trainee.dtr.index'), { month: newMonth, half: data.half });
+    }
+
+    function setHalf(newHalf) {
+        setData('half', newHalf);
+        get(route('trainee.dtr.index'), { month: data.month, half: newHalf });
     }
 
     function handleDownload() {
-        window.location.href = route('trainee.dtr.download') + '?month=' + data.month;
+        window.location.href = route('trainee.dtr.download') + '?month=' + data.month + '&half=' + data.half;
     }
 
     const statusBadge = (status) => {
@@ -88,9 +94,9 @@ export default function Index({ trainee, records, month, date_from, date_to, sum
                         </div>
                     </div>
 
-                    {/* Month Selector + Download */}
+                    {/* Month Selector + Half Toggles + Download */}
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-6">
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                             <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Month:</label>
                             <input
                                 type="month"
@@ -98,6 +104,28 @@ export default function Index({ trainee, records, month, date_from, date_to, sum
                                 onChange={handleMonthChange}
                                 className="w-full sm:w-auto border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                             />
+                            <div className="flex rounded-lg shadow-sm border border-gray-300 dark:border-gray-600 overflow-hidden">
+                                <button
+                                    onClick={() => setHalf('first')}
+                                    className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                                        data.half === 'first'
+                                            ? 'bg-blue-600 text-white dark:bg-blue-700'
+                                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    }`}
+                                >
+                                    1–15
+                                </button>
+                                <button
+                                    onClick={() => setHalf('second')}
+                                    className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                                        data.half === 'second'
+                                            ? 'bg-blue-600 text-white dark:bg-blue-700'
+                                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    }`}
+                                >
+                                    16–31
+                                </button>
+                            </div>
                         </div>
                         <button
                             onClick={handleDownload}
@@ -108,7 +136,7 @@ export default function Index({ trainee, records, month, date_from, date_to, sum
                         </button>
                     </div>
 
-                    {/* Summary Cards – responsive */}
+                    {/* Summary Cards */}
                     <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4 mb-6">
                         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-2.5 sm:p-4 border border-gray-200 dark:border-gray-700 text-center transition-colors duration-200">
                             <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Rendered</p>
