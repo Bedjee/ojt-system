@@ -9,6 +9,7 @@ import {
     XMarkIcon,
     ChevronDownIcon,
     CalendarDaysIcon,
+    ClipboardDocumentCheckIcon,
     SunIcon,
     MoonIcon,
 } from '@heroicons/react/24/outline';
@@ -23,13 +24,14 @@ export default function TraineeLayout({ header, children }) {
     const user = usePage().props.auth.user;
     const { theme, toggleTheme } = useTheme();
 
-    const traineeMenu = [
-        { name: 'Dashboard', route: 'trainee.dashboard', icon: HomeIcon },
-        { name: 'Scan Attendance', route: 'trainee.scan.index', icon: CameraIcon },
-        { name: 'My Calendar', route: 'trainee.attendance.index', icon: CalendarDaysIcon },
-        { name: 'My Profile', route: 'trainee.profile.edit', icon: UserIcon },
-        { name: 'My DTR', route: 'trainee.dtr.index', icon: CalendarDaysIcon },
-    ];
+  const traineeMenu = [
+    { name: 'Dashboard', route: 'trainee.dashboard', icon: HomeIcon },
+    { name: 'Scan Attendance', route: 'trainee.scan.index', icon: CameraIcon },
+    { name: 'My Calendar', route: 'trainee.attendance.index', icon: CalendarDaysIcon },
+    { name: 'Attendance Requests', route: 'trainee.attendance-requests.index', icon: ClipboardDocumentCheckIcon },
+    { name: 'My DTR', route: 'trainee.dtr.index', icon: CalendarDaysIcon },
+    { name: 'My Profile', route: 'trainee.profile.edit', icon: UserIcon },
+];
 
     const isActive = (routeName) => route().current(routeName);
 

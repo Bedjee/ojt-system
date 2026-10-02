@@ -1,26 +1,56 @@
 import HrmoLayout from '@/Layouts/HrmoLayout';
-import { Head, useForm, router } from '@inertiajs/react';
+import { Head, useForm, Link } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import {
     UserGroupIcon,
     CheckCircleIcon,
+    ClockIcon,
+    ExclamationTriangleIcon,
+    FireIcon,
     UserIcon,
     ArrowRightOnRectangleIcon,
-    ClockIcon,
-    ChartBarIcon,
-    ExclamationTriangleIcon,
     MagnifyingGlassIcon,
     AdjustmentsHorizontalIcon,
-    XMarkIcon,
-    FireIcon,
+    CalendarDaysIcon,
+    ChevronRightIcon,
+    ArrowTrendingUpIcon,
+    ArrowTrendingDownIcon,
+    BoltIcon,
 } from '@heroicons/react/24/outline';
 import {
-    BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
-    PieChart, Pie, Cell, LineChart, Line, CartesianGrid,
+    AreaChart,
+    Area,
+    XAxis,
+    YAxis,
+    Tooltip,
+    ResponsiveContainer,
+    CartesianGrid,
 } from 'recharts';
 
-// Color palette for charts
-const COLORS = ['#4db85b', '#ffc30d', '#eb4e27', '#EF4444', '#8B5CF6', '#EC4899'];
+// ---------- Palette ----------
+const BRAND = '#0d9488';        // teal-600
+const BRAND_SOFT = '#ccfbf1';   // teal-100
+const STATUS = {
+    present:    { dot: 'bg-emerald-500', text: 'text-emerald-700 dark:text-emerald-400', chip: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 ring-emerald-200 dark:ring-emerald-800' },
+    incomplete: { dot: 'bg-amber-500',   text: 'text-amber-700 dark:text-amber-400',     chip: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 ring-amber-200 dark:ring-amber-800' },
+    absent:     { dot: 'bg-slate-400',   text: 'text-slate-600 dark:text-slate-400',     chip: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 ring-slate-200 dark:ring-slate-700' },
+};
+const TRAINEE_STATUS = {
+    active:    'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 ring-emerald-200 dark:ring-emerald-800',
+    completed: 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400 ring-sky-200 dark:ring-sky-800',
+    cancelled: 'bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 ring-rose-200 dark:ring-rose-800',
+    on_hold:   'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 ring-amber-200 dark:ring-amber-800',
+};
+
+const ACCENTS = {
+    teal:    { bg: 'bg-teal-50 dark:bg-teal-900/20',    iconBg: 'bg-teal-600',    text: 'text-teal-700 dark:text-teal-400',       ring: 'ring-teal-100 dark:ring-teal-900/40' },
+    emerald: { bg: 'bg-emerald-50 dark:bg-emerald-900/20', iconBg: 'bg-emerald-600', text: 'text-emerald-700 dark:text-emerald-400', ring: 'ring-emerald-100 dark:ring-emerald-900/40' },
+    sky:     { bg: 'bg-sky-50 dark:bg-sky-900/20',      iconBg: 'bg-sky-600',     text: 'text-sky-700 dark:text-sky-400',         ring: 'ring-sky-100 dark:ring-sky-900/40' },
+    rose:    { bg: 'bg-rose-50 dark:bg-rose-900/20',    iconBg: 'bg-rose-600',    text: 'text-rose-700 dark:text-rose-400',       ring: 'ring-rose-100 dark:ring-rose-900/40' },
+    slate:   { bg: 'bg-slate-100 dark:bg-slate-800',    iconBg: 'bg-slate-500',   text: 'text-slate-700 dark:text-slate-300',     ring: 'ring-slate-100 dark:ring-slate-800' },
+};
+
+const n = (v) => Math.round(Number(v) || 0);
 
 export default function Dashboard({
     stats,
@@ -47,9 +77,7 @@ export default function Dashboard({
         date: filters.date || new Date().toISOString().split('T')[0],
     });
 
-    useEffect(() => {
-        setMounted(true);
-    }, []);
+    useEffect(() => setMounted(true), []);
 
     function handleFilterSubmit(e) {
         e.preventDefault();
@@ -57,573 +85,493 @@ export default function Dashboard({
     }
 
     function resetFilters() {
-        setData({
-            search: '',
-            department: '',
-            status: '',
-            date: new Date().toISOString().split('T')[0],
-        });
-        get(route('hrmo.dashboard'), {
-            search: '',
-            department: '',
-            status: '',
-            date: new Date().toISOString().split('T')[0],
-        });
+        const today = new Date().toISOString().split('T')[0];
+        setData({ search: '', department: '', status: '', date: today });
+        get(route('hrmo.dashboard'), { search: '', department: '', status: '', date: today });
     }
 
-    // Stats cards data
-    const statCards = [
-        { label: 'Active Trainees', value: stats.totalActive, icon: UserGroupIcon },
-        { label: 'Completed Trainees', value: stats.totalCompleted, icon: CheckCircleIcon },
-        { label: 'Currently Present', value: stats.currentlyPresent, icon: UserIcon },
-        { label: 'Currently Out', value: stats.currentlyOut, icon: ArrowRightOnRectangleIcon },
-        { label: 'Total Hours Rendered', value: stats.totalHoursRendered + ' hrs', icon: ClockIcon },
-        { label: 'Near Completion (≥80%)', value: stats.nearCompletion, icon: FireIcon },
-        { label: 'Attendance Issues', value: stats.attendanceIssues, icon: ExclamationTriangleIcon },
-    ];
+    // ---------- Derived ----------
+    const completionRate = n(overallProgress.completion);
+    const totalTrainees = stats.totalActive + stats.totalCompleted;
+    const totalToday = attendanceSummary.present + attendanceSummary.incomplete + attendanceSummary.absent;
+    const presentPct = totalToday > 0 ? (attendanceSummary.present / totalToday) * 100 : 0;
+    const incompletePct = totalToday > 0 ? (attendanceSummary.incomplete / totalToday) * 100 : 0;
+    const absentPct = totalToday > 0 ? (attendanceSummary.absent / totalToday) * 100 : 0;
 
-    // Helper for status badges
-    const statusBadge = (status) => {
-        const classes = {
-            active: 'bg-green-100 text-green-800',
-            completed: 'bg-blue-100 text-blue-800',
-            cancelled: 'bg-red-100 text-red-800',
-            on_hold: 'bg-yellow-100 text-yellow-800',
-        };
-        return classes[status] || 'bg-gray-100 text-gray-800';
-    };
+    // Attention items — combine incomplete records + near-completion nudges
+    const attentionItems = [
+        ...incompleteRecords.slice(0, 4).map((r) => ({
+            type: 'incomplete',
+            title: r.trainee,
+            meta: `${r.date} · ${r.missing}`,
+        })),
+        ...nearCompletionList.slice(0, 3).map((t) => ({
+            type: 'near',
+            title: t.name,
+            meta: `${t.progress}% · ${t.department}`,
+        })),
+    ].slice(0, 6);
 
-    const todayStatusBadge = (status) => {
-        const classes = {
-            present: 'bg-green-100 text-green-800',
-            absent: 'bg-gray-100 text-gray-800',
-            incomplete: 'bg-yellow-100 text-yellow-800',
-        };
-        return classes[status] || 'bg-gray-100 text-gray-800';
-    };
-
-    const inputBase = 'block w-full rounded-lg border-gray-200 shadow-sm py-2.5 px-4 transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent';
-
-    // Near completion list for spotlight
-    const nearCompletionTrainees = trainees.filter(t => t.progress >= 80 && t.progress < 100);
-
-    // Prepare data for attendance summary pie chart
-    const attendancePieData = [
-        { name: 'Present', value: attendanceSummary.present },
-        { name: 'Incomplete', value: attendanceSummary.incomplete },
-        { name: 'Absent', value: attendanceSummary.absent },
-    ];
-
-    // Overall progress donut data
-    const overallDonutData = [
-        { name: 'Rendered', value: overallProgress.rendered },
-        { name: 'Remaining', value: overallProgress.required - overallProgress.rendered },
+    // KPI cards — 4 meaningful cards with clear hierarchy
+    const kpis = [
+        {
+            label: 'Active Trainees',
+            value: stats.totalActive,
+            sub: `${totalTrainees} total · ${stats.totalCompleted} completed`,
+            icon: UserGroupIcon,
+            accent: 'teal',
+        },
+        {
+            label: 'Overall Completion',
+            value: `${completionRate}%`,
+            sub: `${n(overallProgress.rendered)} / ${n(overallProgress.required)} hrs`,
+            icon: ClockIcon,
+            accent: 'emerald',
+        },
+        {
+            label: 'Present Today',
+            value: stats.currentlyPresent,
+            sub: `${stats.currentlyOut} out · ${attendanceSummary.absent} absent`,
+            icon: CheckCircleIcon,
+            accent: 'sky',
+        },
+        {
+            label: 'Issues Today',
+            value: stats.attendanceIssues,
+            sub: stats.attendanceIssues > 0 ? 'Requires attention' : 'All clear',
+            icon: ExclamationTriangleIcon,
+            accent: stats.attendanceIssues > 0 ? 'rose' : 'slate',
+        },
     ];
 
     return (
-        <HrmoLayout header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">HRMO Dashboard</h2>}>
+        <HrmoLayout header={<h2 className="font-semibold text-xl text-slate-800 dark:text-slate-200 leading-tight">HRMO Dashboard</h2>}>
             <Head title="HRMO Dashboard" />
-            <div className="py-6 sm:py-8 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-7xl mx-auto">
-                    {/* Header */}
-                    <div
-                        className={`mb-6 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl shadow-sm border border-indigo-100 p-4 sm:p-6 transition-all duration-700 ${
-                            mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-                        }`}
-                    >
-                        <div className="flex items-start gap-3">
-                            <UserGroupIcon className="w-8 h-8 sm:w-10 sm:h-10 text-indigo-600 flex-shrink-0 mt-0.5" />
-                            <div>
-                                <h3 className="text-lg sm:text-xl font-bold text-gray-800">HRMO Overview</h3>
-                                <p className="text-sm sm:text-base text-gray-700">
-                                    Monitor trainee progress, attendance, and performance at a glance.
-                                </p>
-                            </div>
+
+            <div className="py-6 sm:py-8 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-slate-900/50 min-h-screen">
+                <div className="max-w-7xl mx-auto space-y-6">
+
+                    {/* ================= HEADER ================= */}
+                    <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 transition-opacity duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+                        <div>
+                            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Overview</h1>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                                Monitoring {totalTrainees} trainees · {new Date(data.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                            </p>
                         </div>
+                        <button
+                            onClick={() => setShowFilters((s) => !s)}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition-colors self-start sm:self-auto"
+                        >
+                            <AdjustmentsHorizontalIcon className="w-4 h-4" />
+                            {showFilters ? 'Hide filters' : 'Show filters'}
+                        </button>
                     </div>
 
-                    {/* Stats Cards */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-                        {statCards.map((stat, index) => {
-                            const Icon = stat.icon;
-                            const delay = index * 75;
+                    {/* ================= FILTERS ================= */}
+                    {showFilters && (
+                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 sm:p-5">
+                            <form onSubmit={handleFilterSubmit}>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                    <div className="relative">
+                                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Search</label>
+                                        <MagnifyingGlassIcon className="absolute left-3 top-[34px] w-4 h-4 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            value={data.search}
+                                            onChange={(e) => setData('search', e.target.value)}
+                                            placeholder="Name or email..."
+                                            className="w-full rounded-lg border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 pl-9 pr-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Department</label>
+                                        <select
+                                            value={data.department}
+                                            onChange={(e) => setData('department', e.target.value)}
+                                            className="w-full rounded-lg border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        >
+                                            <option value="">All departments</option>
+                                            {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Status</label>
+                                        <select
+                                            value={data.status}
+                                            onChange={(e) => setData('status', e.target.value)}
+                                            className="w-full rounded-lg border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        >
+                                            <option value="">All statuses</option>
+                                            {statuses.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Date</label>
+                                        <input
+                                            type="date"
+                                            value={data.date}
+                                            onChange={(e) => setData('date', e.target.value)}
+                                            className="w-full rounded-lg border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="mt-3 flex gap-2">
+                                    <button type="submit" className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors">
+                                        Apply
+                                    </button>
+                                    <button type="button" onClick={resetFilters} className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                                        Reset
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+
+                    {/* ================= KPI ROW ================= */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {kpis.map((kpi, i) => {
+                            const Icon = kpi.icon;
+                            const a = ACCENTS[kpi.accent];
                             return (
                                 <div
-                                    key={index}
-                                    className={`bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-xl p-4 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-[1.02] ${
-                                        mounted
-                                            ? 'opacity-100 translate-y-0'
-                                            : 'opacity-0 translate-y-8'
-                                    }`}
-                                    style={{ transitionDelay: `${delay}ms` }}
+                                    key={i}
+                                    className={`bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 transition-all duration-500 hover:shadow-md ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}
+                                    style={{ transitionDelay: `${i * 60}ms` }}
                                 >
                                     <div className="flex items-start justify-between">
-                                        <div>
-                                            <div className="text-xs sm:text-sm text-indigo-100 font-medium">{stat.label}</div>
-                                            <div className="text-xl sm:text-3xl font-bold text-white">{stat.value}</div>
+                                        <div className="min-w-0">
+                                            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">{kpi.label}</p>
+                                            <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-1.5">{kpi.value}</p>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">{kpi.sub}</p>
                                         </div>
-                                        <Icon className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-200 opacity-80" />
+                                        <div className={`flex-shrink-0 w-10 h-10 rounded-lg ${a.iconBg} flex items-center justify-center shadow-sm`}>
+                                            <Icon className="w-5 h-5 text-white" />
+                                        </div>
                                     </div>
                                 </div>
                             );
                         })}
                     </div>
 
-                    {/* ======================== */}
-                    {/* CHARTS SECTION            */}
-                    {/* ======================== */}
+                    {/* ================= TODAY'S PULSE + NEEDS ATTENTION ================= */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-                    {/* Row 1: Overall Progress + Attendance Summary */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
-                            <h4 className="text-sm font-semibold text-gray-700 mb-2">Overall OJT Progress</h4>
-                            <div className="h-48">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={overallDonutData}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={60}
-                                            outerRadius={80}
-                                            paddingAngle={5}
-                                            dataKey="value"
-                                        >
-                                            <Cell fill="#4F46E5" />
-                                            <Cell fill="#1a1b1b" />
-                                        </Pie>
-                                        <Tooltip formatter={(value) => `${value} hrs`} />
-                                        <Legend />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </div>
-                            <div className="text-center text-sm text-gray-600 mt-1">
-                                {overallProgress.completion}% completed ({overallProgress.rendered} / {overallProgress.required} hrs)
-                            </div>
-                        </div>
-
-                        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
-                            <h4 className="text-sm font-semibold text-gray-700 mb-2">Today's Attendance Status</h4>
-                            <div className="h-48">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={attendancePieData}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={60}
-                                            outerRadius={80}
-                                            paddingAngle={5}
-                                            dataKey="value"
-                                        >
-                                            {attendancePieData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip />
-                                        <Legend />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Row 2: Department Progress */}
-                    <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
-                        <h4 className="text-sm font-semibold text-gray-700 mb-4">Department Progress</h4>
-                        {departmentProgress.length === 0 ? (
-                            <p className="text-gray-500 text-sm">No departments with data.</p>
-                        ) : (
-                            <div className="h-64">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={departmentProgress}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="name" />
-                                        <YAxis />
-                                        <Tooltip formatter={(value) => `${value} hrs`} />
-                                        <Legend />
-                                        <Bar dataKey="rendered" fill="#4F46E5" name="Rendered" />
-                                        <Bar dataKey="required" fill="#131313" name="Required" />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Row 3: Top 3 vs Lowest 5 */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
-                            <h4 className="text-sm font-semibold text-gray-700 mb-4">Top 3 Trainees (by rendered hours)</h4>
-                            {topTrainees.length === 0 ? (
-                                <p className="text-gray-500 text-sm">No data.</p>
-                            ) : (
-                                <div className="h-48">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={topTrainees}>
-                                            <XAxis dataKey="name" />
-                                            <YAxis />
-                                            <Tooltip formatter={(value) => `${value} hrs`} />
-                                            <Bar dataKey="rendered" fill="#10B981" name="Rendered" />
-                                        </BarChart>
-                                    </ResponsiveContainer>
+                        {/* Today's Attendance Pulse — 2 cols */}
+                        <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 sm:p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Today's Attendance</h3>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{totalToday} records for {data.date}</p>
                                 </div>
-                            )}
-                        </div>
-                        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
-                            <h4 className="text-sm font-semibold text-gray-700 mb-4">Lowest 5 Trainees (by rendered hours)</h4>
-                            {lowestTrainees.length === 0 ? (
-                                <p className="text-gray-500 text-sm">No data.</p>
-                            ) : (
-                                <div className="h-48">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={lowestTrainees}>
-                                            <XAxis dataKey="name" />
-                                            <YAxis />
-                                            <Tooltip formatter={(value) => `${value} hrs`} />
-                                            <Bar dataKey="rendered" fill="#EF4444" name="Rendered" />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Row 4: Daily Attendance Trends */}
-                    <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
-                        <h4 className="text-sm font-semibold text-gray-700 mb-4">Daily Attendance Trends (last 30 days)</h4>
-                        {trendData.length === 0 ? (
-                            <p className="text-gray-500 text-sm">No data.</p>
-                        ) : (
-                            <div className="h-64">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={trendData}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="date" />
-                                        <YAxis yAxisId="left" />
-                                        <YAxis yAxisId="right" orientation="right" />
-                                        <Tooltip />
-                                        <Legend />
-                                        <Line yAxisId="left" type="monotone" dataKey="total_hours" stroke="#4F46E5" name="Total Hours" />
-                                        <Line yAxisId="right" type="monotone" dataKey="records" stroke="#10B981" name="Records" />
-                                    </LineChart>
-                                </ResponsiveContainer>
+                                <CalendarDaysIcon className="w-5 h-5 text-slate-400" />
                             </div>
-                        )}
-                    </div>
 
-                    {/* Row 5: Near Completion & Incomplete Records */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
-                            <h4 className="text-sm font-semibold text-gray-700 mb-2">Near Completion (≥80%)</h4>
-                            {nearCompletionList.length === 0 ? (
-                                <p className="text-gray-500 text-sm">No trainees in this range.</p>
-                            ) : (
-                                <ul className="divide-y divide-gray-100 max-h-48 overflow-y-auto">
-                                    {nearCompletionList.map((t, i) => (
-                                        <li key={i} className="py-2 flex justify-between text-sm">
-                                            <span>{t.name}</span>
-                                            <span className="text-indigo-600 font-semibold">{t.progress}%</span>
-                                            <span className="text-gray-500">{t.department}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </div>
-                        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
-                            <h4 className="text-sm font-semibold text-gray-700 mb-2">Incomplete Attendance (last 7 days)</h4>
-                            {incompleteRecords.length === 0 ? (
-                                <p className="text-gray-500 text-sm">No incomplete records.</p>
-                            ) : (
-                                <ul className="divide-y divide-gray-100 max-h-48 overflow-y-auto">
-                                    {incompleteRecords.map((rec, i) => (
-                                        <li key={i} className="py-2 flex justify-between text-sm">
-                                            <span>{rec.trainee}</span>
-                                            <span className="text-gray-500">{rec.date}</span>
-                                            <span className="text-yellow-600">{rec.missing}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* ======================== */}
-                    {/* END CHARTS SECTION          */}
-                    {/* ======================== */}
-
-                    {/* Near Completion Spotlight (optional, but we already have it above) */}
-                    {nearCompletionTrainees.length > 0 && (
-                        <div
-                            className={`mb-6 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-2xl shadow-sm border border-indigo-200 p-4 sm:p-6 transition-all duration-700 ${
-                                mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-                            }`}
-                        >
-                            <div className="flex items-center gap-3 mb-3">
-                                <FireIcon className="w-6 h-6 text-indigo-600" />
-                                <h4 className="text-base sm:text-lg font-semibold text-gray-800">
-                                    Trainees Close to Completion ({nearCompletionTrainees.length})
-                                </h4>
+                            {/* Proportional bar */}
+                            <div className="h-3 w-full rounded-full overflow-hidden flex bg-slate-100 dark:bg-slate-700 mb-5">
+                                <div className="bg-emerald-500" style={{ width: `${presentPct}%` }} title={`Present: ${attendanceSummary.present}`} />
+                                <div className="bg-amber-500" style={{ width: `${incompletePct}%` }} title={`Incomplete: ${attendanceSummary.incomplete}`} />
+                                <div className="bg-slate-400" style={{ width: `${absentPct}%` }} title={`Absent: ${attendanceSummary.absent}`} />
                             </div>
-                            <div className="flex flex-wrap gap-3">
-                                {nearCompletionTrainees.slice(0, 5).map((t) => (
-                                    <div
-                                        key={t.id}
-                                        className="bg-white/80 backdrop-blur-sm rounded-lg px-4 py-2 shadow-sm border border-indigo-100 flex items-center gap-2 text-sm"
-                                    >
-                                        <span className="font-medium text-gray-800">{t.name}</span>
-                                        <span className="text-indigo-600 font-semibold">{t.progress}%</span>
-                                        <span className="text-xs text-gray-500">{t.department}</span>
+
+                            {/* Legend with counts */}
+                            <div className="grid grid-cols-3 gap-3">
+                                {[
+                                    { key: 'present',    label: 'Present',    value: attendanceSummary.present },
+                                    { key: 'incomplete', label: 'Incomplete', value: attendanceSummary.incomplete },
+                                    { key: 'absent',     label: 'Absent',     value: attendanceSummary.absent },
+                                ].map((row) => (
+                                    <div key={row.key} className="flex items-center gap-2">
+                                        <span className={`w-2.5 h-2.5 rounded-full ${STATUS[row.key].dot}`} />
+                                        <div className="min-w-0">
+                                            <p className="text-xs text-slate-500 dark:text-slate-400">{row.label}</p>
+                                            <p className="text-lg font-semibold text-slate-900 dark:text-slate-100 leading-tight">{row.value}</p>
+                                        </div>
                                     </div>
                                 ))}
-                                {nearCompletionTrainees.length > 5 && (
-                                    <div className="bg-white/80 rounded-lg px-4 py-2 shadow-sm border border-indigo-100 text-sm text-gray-500">
-                                        +{nearCompletionTrainees.length - 5} more
+                            </div>
+
+                            {/* Secondary mini stats */}
+                            <div className="mt-5 pt-5 border-t border-slate-100 dark:border-slate-700 grid grid-cols-2 sm:grid-cols-3 gap-4">
+                                <div className="flex items-center gap-2">
+                                    <UserIcon className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                                    <div>
+                                        <p className="text-[11px] text-slate-500 dark:text-slate-400">Currently In</p>
+                                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{stats.currentlyPresent}</p>
                                     </div>
-                                )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <ArrowRightOnRectangleIcon className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                                    <div>
+                                        <p className="text-[11px] text-slate-500 dark:text-slate-400">Already Out</p>
+                                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{stats.currentlyOut}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <ClockIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                    <div>
+                                        <p className="text-[11px] text-slate-500 dark:text-slate-400">Hours Today</p>
+                                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                                            {n(trainees.reduce((s, t) => s + Number(t.today_hours || 0), 0))} hrs
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    )}
 
-                    {/* Filters */}
-                    <div
-                        className={`bg-white overflow-hidden shadow-sm rounded-xl mb-6 transition-all duration-500 ${
-                            mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-                        }`}
-                    >
-                        <div className="p-4 sm:p-6">
-                            <button
-                                onClick={() => setShowFilters(!showFilters)}
-                                className="flex items-center gap-2 text-indigo-600 hover:text-indigo-800 font-medium transition-colors"
-                            >
-                                <AdjustmentsHorizontalIcon className="w-5 h-5" />
-                                {showFilters ? 'Hide Filters' : 'Show Filters'}
-                            </button>
-                            {showFilters && (
-                                <form onSubmit={handleFilterSubmit} className="mt-4">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">Search Trainee</label>
-                                            <div className="mt-1 relative">
-                                                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                                <input
-                                                    type="text"
-                                                    value={data.search}
-                                                    onChange={e => setData('search', e.target.value)}
-                                                    placeholder="Name or email..."
-                                                    className={inputBase}
-                                                />
+                        {/* Needs Attention — 1 col */}
+                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 sm:p-6 flex flex-col">
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Needs Attention</h3>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Incomplete & near-completion</p>
+                                </div>
+                                <BoltIcon className={`w-5 h-5 ${attentionItems.length > 0 ? 'text-amber-500' : 'text-slate-300 dark:text-slate-600'}`} />
+                            </div>
+
+                            {attentionItems.length === 0 ? (
+                                <div className="flex-1 flex flex-col items-center justify-center text-center py-6">
+                                    <CheckCircleIcon className="w-10 h-10 text-emerald-400 mb-2" />
+                                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">All clear</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">No pending issues right now</p>
+                                </div>
+                            ) : (
+                                <ul className="flex-1 space-y-2 overflow-y-auto max-h-64 -mr-2 pr-2">
+                                    {attentionItems.map((item, i) => (
+                                        <li
+                                            key={i}
+                                            className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                                        >
+                                            <span className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${item.type === 'near' ? 'bg-teal-500' : 'bg-amber-500'}`} />
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{item.title}</p>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{item.meta}</p>
                                             </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">Department</label>
-                                            <select
-                                                value={data.department}
-                                                onChange={e => setData('department', e.target.value)}
-                                                className={`${inputBase} appearance-none pr-10`}
-                                            >
-                                                <option value="">All Departments</option>
-                                                {departments.map((dept) => (
-                                                    <option key={dept.id} value={dept.id}>{dept.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">Status</label>
-                                            <select
-                                                value={data.status}
-                                                onChange={e => setData('status', e.target.value)}
-                                                className={`${inputBase} appearance-none pr-10`}
-                                            >
-                                                <option value="">All Statuses</option>
-                                                {statuses.map((status) => (
-                                                    <option key={status} value={status}>
-                                                        {status.charAt(0).toUpperCase() + status.slice(1)}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">Date</label>
-                                            <input
-                                                type="date"
-                                                value={data.date}
-                                                onChange={e => setData('date', e.target.value)}
-                                                className={inputBase}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="mt-4 flex flex-wrap gap-2">
-                                        <button
-                                            type="submit"
-                                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
-                                        >
-                                            Apply Filters
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={resetFilters}
-                                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium"
-                                        >
-                                            Reset
-                                        </button>
-                                    </div>
-                                </form>
+                                        </li>
+                                    ))}
+                                </ul>
                             )}
                         </div>
                     </div>
 
-                    {/* Monitoring Table */}
-                    <div
-                        className={`bg-white overflow-hidden shadow-sm rounded-xl transition-all duration-700 ${
-                            mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-                        }`}
-                    >
-                        {/* Mobile Card View */}
-                        <div className="sm:hidden divide-y divide-gray-100">
-                            {trainees.length === 0 ? (
-                                <div className="p-6 text-center text-gray-500">No trainees found.</div>
+                    {/* ================= DEPARTMENT PROGRESS ================= */}
+                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 sm:p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Department Progress</h3>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Rendered vs required hours per department</p>
+                            </div>
+                        </div>
+                        {departmentProgress.length === 0 ? (
+                            <p className="text-sm text-slate-500 dark:text-slate-400 py-6 text-center">No department data available.</p>
+                        ) : (
+                            <div className="space-y-4">
+                                {[...departmentProgress]
+                                    .sort((a, b) => b.completion - a.completion)
+                                    .map((d, i) => {
+                                        const pct = Math.min(n(d.completion), 100);
+                                        return (
+                                            <div key={i} className="space-y-1.5">
+                                                <div className="flex items-baseline justify-between gap-3">
+                                                    <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{d.name}</span>
+                                                    <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                                        <span className="font-semibold text-slate-700 dark:text-slate-300">{n(d.rendered)}</span> / {n(d.required)} hrs · <span className="font-semibold text-teal-700 dark:text-teal-400">{pct}%</span>
+                                                    </span>
+                                                </div>
+                                                <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+                                                    <div
+                                                        className="h-full rounded-full bg-gradient-to-r from-teal-500 to-emerald-500 transition-all duration-700"
+                                                        style={{ width: `${pct}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* ================= PERFORMANCE — TOP + BOTTOM ================= */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+                        {/* Top performers */}
+                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 sm:p-6">
+                            <div className="flex items-center gap-2 mb-4">
+                                <ArrowTrendingUpIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Top Performers</h3>
+                            </div>
+                            {topTrainees.length === 0 ? (
+                                <p className="text-sm text-slate-500 dark:text-slate-400">No data.</p>
                             ) : (
-                                trainees.map((trainee, idx) => {
-                                    const progress = trainee.progress;
-                                    const isNearCompletion = progress >= 80 && progress < 100;
-                                    return (
-                                        <div
-                                            key={trainee.id}
-                                            className={`p-4 transition-all duration-300 ${
-                                                mounted ? 'opacity-100' : 'opacity-0'
-                                            }`}
-                                            style={{ transitionDelay: `${idx * 50}ms` }}
-                                        >
-                                            <div className="flex justify-between items-start mb-2">
-                                                <div>
-                                                    <div className="font-semibold text-gray-900">{trainee.name}</div>
-                                                    <div className="text-sm text-gray-500">{trainee.department}</div>
-                                                </div>
-                                                {isNearCompletion && (
-                                                    <span className="flex items-center gap-1 text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full text-xs font-medium">
-                                                        <FireIcon className="w-3 h-3" /> Near Completion
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-1 text-sm mt-2">
-                                                <div className="text-gray-500">Today</div>
-                                                <div className="text-gray-800 text-right">{trainee.today_hours} hrs</div>
-                                                <div className="text-gray-500">Total</div>
-                                                <div className="text-gray-800 text-right">{trainee.total_hours} hrs</div>
-                                                <div className="text-gray-500">Remaining</div>
-                                                <div className="text-gray-800 text-right">{trainee.remaining_hours} hrs</div>
-                                                <div className="text-gray-500">Progress</div>
-                                                <div className="text-gray-800 text-right font-semibold">
-                                                    {trainee.progress}%
-                                                    <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-                                                        <div
-                                                            className={`h-1.5 rounded-full ${
-                                                                progress >= 80 ? 'bg-green-500' :
-                                                                progress >= 50 ? 'bg-yellow-500' :
-                                                                'bg-red-500'
-                                                            }`}
-                                                            style={{ width: `${Math.min(progress, 100)}%` }}
-                                                        ></div>
-                                                    </div>
-                                                </div>
-                                                <div className="text-gray-500">Status</div>
-                                                <div className="text-right">
-                                                    <span className={`px-2 py-0.5 text-xs rounded-full ${statusBadge(trainee.status)}`}>
-                                                        {trainee.status}
-                                                    </span>
-                                                </div>
-                                                <div className="text-gray-500">Today's Status</div>
-                                                <div className="text-right">
-                                                    <span className={`px-2 py-0.5 text-xs rounded-full ${todayStatusBadge(trainee.today_status)}`}>
-                                                        {trainee.today_status}
-                                                    </span>
+                                <ul className="divide-y divide-slate-100 dark:divide-slate-700">
+                                    {topTrainees.map((t, i) => (
+                                        <li key={i} className="py-3 flex items-center justify-between gap-3">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-semibold flex items-center justify-center">
+                                                    {i + 1}
+                                                </span>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate uppercase">{t.name}</p>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{t.department}</p>
                                                 </div>
                                             </div>
-                                        </div>
-                                    );
-                                })
+                                            <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                                                {n(t.rendered)} hrs
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
                             )}
                         </div>
 
-                        {/* Table View */}
-                        <div className="hidden sm:block overflow-x-auto -mx-4 sm:mx-0">
-                            <table className="min-w-full divide-y divide-gray-200 text-xs sm:text-sm">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Trainee</th>
-                                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-center font-medium text-gray-500 uppercase tracking-wider">Today</th>
-                                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-center font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-center font-medium text-gray-500 uppercase tracking-wider">Remaining</th>
-                                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-center font-medium text-gray-500 uppercase tracking-wider">Progress</th>
-                                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-center font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-center font-medium text-gray-500 uppercase tracking-wider">Today's Status</th>
-                                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-center font-medium text-gray-500 uppercase tracking-wider">Near Completion</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {trainees.length === 0 ? (
+                        {/* Needs improvement */}
+                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 sm:p-6">
+                            <div className="flex items-center gap-2 mb-4">
+                                <ArrowTrendingDownIcon className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Needs Improvement</h3>
+                            </div>
+                            {lowestTrainees.length === 0 ? (
+                                <p className="text-sm text-slate-500 dark:text-slate-400">No data.</p>
+                            ) : (
+                                <ul className="divide-y divide-slate-100 dark:divide-slate-700">
+                                    {lowestTrainees.map((t, i) => (
+                                        <li key={i} className="py-3 flex items-center justify-between gap-3">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-semibold flex items-center justify-center">
+                                                    {i + 1}
+                                                </span>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate uppercase">{t.name}</p>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{t.department}</p>
+                                                </div>
+                                            </div>
+                                            <span className="text-sm font-semibold text-amber-600 dark:text-amber-400 whitespace-nowrap">
+                                                {n(t.rendered)} hrs
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* ================= TREND ================= */}
+                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 sm:p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Attendance Trend</h3>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Total hours rendered per day · last 30 days</p>
+                            </div>
+                        </div>
+                        {trendData.length === 0 ? (
+                            <p className="text-sm text-slate-500 dark:text-slate-400 py-10 text-center">No trend data available.</p>
+                        ) : (
+                            <div className="h-56">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={trendData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor={BRAND} stopOpacity={0.35} />
+                                                <stop offset="100%" stopColor={BRAND} stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                                        <XAxis
+                                            dataKey="date"
+                                            tick={{ fontSize: 11, fill: '#64748b' }}
+                                            tickFormatter={(v) => v.slice(5)}
+                                            axisLine={false}
+                                            tickLine={false}
+                                        />
+                                        <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                                        <Tooltip
+                                            contentStyle={{
+                                                borderRadius: 8,
+                                                border: '1px solid #e2e8f0',
+                                                fontSize: 12,
+                                            }}
+                                            formatter={(value) => [`${n(value)} hrs`, 'Total hours']}
+                                            labelFormatter={(l) => new Date(l).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                        />
+                                        <Area type="monotone" dataKey="total_hours" stroke={BRAND} strokeWidth={2} fill="url(#trendFill)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* ================= TRAINEE MONITORING TABLE ================= */}
+                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                        <div className="px-5 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Trainee Monitoring</h3>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Live status for {data.date}</p>
+                            </div>
+                            <span className="text-xs text-slate-500 dark:text-slate-400">{trainees.length} shown</span>
+                        </div>
+
+                        {trainees.length === 0 ? (
+                            <div className="p-10 text-center text-sm text-slate-500 dark:text-slate-400">No trainees match the current filters.</div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full text-sm">
+                                    <thead className="bg-slate-50 dark:bg-slate-800/60">
                                         <tr>
-                                            <td colSpan="9" className="px-4 py-8 text-center text-gray-500">
-                                                No trainees found matching the filters.
-                                            </td>
+                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Trainee</th>
+                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Department</th>
+                                            <th className="px-4 py-2.5 text-right text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Today</th>
+                                            <th className="px-4 py-2.5 text-right text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total</th>
+                                            <th className="px-4 py-2.5 text-right text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Remaining</th>
+                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Progress</th>
+                                            <th className="px-4 py-2.5 text-center text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Today</th>
+                                            <th className="px-4 py-2.5 text-center text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
                                         </tr>
-                                    ) : (
-                                        trainees.map((trainee, idx) => {
-                                            const progress = trainee.progress;
-                                            const isNearCompletion = progress >= 80 && progress < 100;
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                        {trainees.map((t) => {
+                                            const pct = Math.min(n(t.progress), 100);
+                                            const isNear = pct >= 80 && pct < 100;
                                             return (
-                                                <tr
-                                                    key={trainee.id}
-                                                    className={`hover:bg-gray-50 transition-colors ${
-                                                        mounted ? 'opacity-100' : 'opacity-0'
-                                                    }`}
-                                                    style={{ transition: 'opacity 0.3s ease-in-out', transitionDelay: `${idx * 50}ms` }}
-                                                >
-                                                    <td className="px-2 sm:px-4 py-2 sm:py-3 font-medium text-gray-900">{trainee.name}</td>
-                                                    <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-500">{trainee.department}</td>
-                                                    <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">{trainee.today_hours} hrs</td>
-                                                    <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">{trainee.total_hours} hrs</td>
-                                                    <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">{trainee.remaining_hours} hrs</td>
-                                                    <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">
-                                                        <div className="flex items-center justify-center gap-1 sm:gap-2">
-                                                            <div className="w-16 sm:w-20 bg-gray-200 rounded-full h-2">
-                                                                <div
-                                                                    className={`h-2 rounded-full ${
-                                                                        progress >= 80 ? 'bg-green-500' :
-                                                                        progress >= 50 ? 'bg-yellow-500' :
-                                                                        'bg-red-500'
-                                                                    }`}
-                                                                    style={{ width: `${Math.min(progress, 100)}%` }}
-                                                                ></div>
-                                                            </div>
-                                                            <span className="text-xs sm:text-sm">{progress}%</span>
+                                                <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-medium text-slate-800 dark:text-slate-200 uppercase">{t.name}</span>
+                                                            {isNear && <FireIcon className="w-3.5 h-3.5 text-teal-500" title="Near completion" />}
                                                         </div>
                                                     </td>
-                                                    <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">
-                                                        <span className={`px-2 py-0.5 sm:px-3 sm:py-1 text-xs font-medium rounded-full ${statusBadge(trainee.status)}`}>
-                                                            {trainee.status}
+                                                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{t.department}</td>
+                                                    <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">{n(t.today_hours)} hrs</td>
+                                                    <td className="px-4 py-3 text-right font-medium text-slate-800 dark:text-slate-200">{n(t.total_hours)} hrs</td>
+                                                    <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-400">{n(t.remaining_hours)} hrs</td>
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex items-center gap-2 min-w-[110px]">
+                                                            <div className="flex-1 h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+                                                                <div
+                                                                    className={`h-full rounded-full ${pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-teal-500' : 'bg-amber-500'}`}
+                                                                    style={{ width: `${pct}%` }}
+                                                                />
+                                                            </div>
+                                                            <span className="text-xs font-medium text-slate-600 dark:text-slate-400 w-9 text-right">{pct}%</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 ${STATUS[t.today_status]?.chip || STATUS.absent.chip}`}>
+                                                            <span className={`w-1.5 h-1.5 rounded-full ${STATUS[t.today_status]?.dot || STATUS.absent.dot}`} />
+                                                            {t.today_status}
                                                         </span>
                                                     </td>
-                                                    <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">
-                                                        <span className={`px-2 py-0.5 sm:px-3 sm:py-1 text-xs font-medium rounded-full ${todayStatusBadge(trainee.today_status)}`}>
-                                                            {trainee.today_status}
+                                                    <td className="px-4 py-3 text-center">
+                                                        <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 ${TRAINEE_STATUS[t.status] || TRAINEE_STATUS.on_hold}`}>
+                                                            {t.status}
                                                         </span>
-                                                    </td>
-                                                    <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">
-                                                        {isNearCompletion && (
-                                                            <span className="inline-flex items-center gap-1 text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full text-xs font-medium">
-                                                                <FireIcon className="w-3 h-3" /> Yes
-                                                            </span>
-                                                        )}
                                                     </td>
                                                 </tr>
                                             );
-                                        })
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

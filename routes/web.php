@@ -74,6 +74,12 @@ Route::delete('/trainees/{trainee}/attendance/{attendance}', [\App\Http\Controll
 
     Route::post('/trainees/{trainee}/reset-password', [\App\Http\Controllers\Hrmo\TraineeController::class, 'resetPassword'])
     ->name('trainees.reset-password');
+
+
+    Route::get('/attendance-requests', [\App\Http\Controllers\Hrmo\AttendanceRequestController::class, 'index'])->name('attendance-requests.index');
+Route::get('/attendance-requests/{attendanceRequest}', [\App\Http\Controllers\Hrmo\AttendanceRequestController::class, 'show'])->name('attendance-requests.show');
+Route::post('/attendance-requests/{attendanceRequest}/approve', [\App\Http\Controllers\Hrmo\AttendanceRequestController::class, 'approve'])->name('attendance-requests.approve');
+Route::post('/attendance-requests/{attendanceRequest}/reject', [\App\Http\Controllers\Hrmo\AttendanceRequestController::class, 'reject'])->name('attendance-requests.reject');
     });
 
     // Trainee routes
@@ -89,6 +95,15 @@ Route::put('/profile', [\App\Http\Controllers\Trainee\ProfileController::class, 
 
 Route::get('/dtr', [\App\Http\Controllers\Trainee\DtrController::class, 'index'])->name('dtr.index');
 Route::get('/dtr/download', [\App\Http\Controllers\Trainee\DtrController::class, 'download'])->name('dtr.download');
+
+
+Route::get('/attendance-requests', [\App\Http\Controllers\Trainee\AttendanceRequestController::class, 'index'])->name('attendance-requests.index');
+Route::get('/attendance-requests/create', [\App\Http\Controllers\Trainee\AttendanceRequestController::class, 'create'])->name('attendance-requests.create');
+Route::post('/attendance-requests', [\App\Http\Controllers\Trainee\AttendanceRequestController::class, 'store'])->name('attendance-requests.store');
+Route::get('/attendance-requests/missing-fields', [\App\Http\Controllers\Trainee\AttendanceRequestController::class, 'missingFields'])->name('attendance-requests.missing-fields');
+Route::get('/attendance-requests/{attendanceRequest}/letter', [\App\Http\Controllers\Trainee\AttendanceRequestController::class, 'letter'])->name('attendance-requests.letter');
+Route::post('/attendance-requests/{attendanceRequest}/upload', [\App\Http\Controllers\Trainee\AttendanceRequestController::class, 'uploadImage'])->name('attendance-requests.upload');
+Route::delete('/attendance-requests/{attendanceRequest}', [\App\Http\Controllers\Trainee\AttendanceRequestController::class, 'destroy'])->name('attendance-requests.destroy');
 
 });
 });

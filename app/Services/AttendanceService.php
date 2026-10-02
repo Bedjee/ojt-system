@@ -272,7 +272,7 @@ protected function determineAction(Carbon $now, Attendance $attendance)
  * Morning: 8:00 AM – 12:00 PM (max 4 hours)
  * Afternoon: 1:00 PM – 5:00 PM (max 4 hours)
  */
-protected function calculateDailyHours(Attendance $attendance)
+public function calculateDailyHours(Attendance $attendance)
 {
     $dateStr = $attendance->date->format('Y-m-d');
 

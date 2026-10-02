@@ -5,6 +5,7 @@ import {
     UsersIcon,
     BuildingOffice2Icon,
     ClipboardDocumentListIcon,
+    ClipboardDocumentCheckIcon,
     Cog6ToothIcon,
     QrCodeIcon,
     UserCircleIcon,
@@ -24,13 +25,14 @@ export default function HrmoLayout({ header, children }) {
     const flash = usePage().props.flash;
 
     const hrmoMenu = [
-        { name: 'Dashboard', route: 'hrmo.dashboard', icon: HomeIcon },
-        { name: 'Trainees', route: 'hrmo.trainees.index', icon: UsersIcon },
-        { name: 'Departments', route: 'hrmo.departments.index', icon: BuildingOffice2Icon },
-        { name: 'Attendance Records', route: 'hrmo.attendance-records.index', icon: ClipboardDocumentListIcon },
-        { name: 'Attendance Settings', route: 'hrmo.attendance-settings.edit', icon: Cog6ToothIcon },
-        { name: 'QR Code', route: 'hrmo.qr-code.show', icon: QrCodeIcon },
-    ];
+    { name: 'Dashboard', route: 'hrmo.dashboard', icon: HomeIcon },
+    { name: 'Trainees', route: 'hrmo.trainees.index', icon: UsersIcon },
+    { name: 'Departments', route: 'hrmo.departments.index', icon: BuildingOffice2Icon },
+    { name: 'Attendance Records', route: 'hrmo.attendance-records.index', icon: ClipboardDocumentListIcon },
+    { name: 'Attendance Requests', route: 'hrmo.attendance-requests.index', icon: ClipboardDocumentCheckIcon },
+    { name: 'Attendance Settings', route: 'hrmo.attendance-settings.edit', icon: Cog6ToothIcon },
+    { name: 'QR Code', route: 'hrmo.qr-code.show', icon: QrCodeIcon },
+];
 
     const isActive = (routeName) => route().current(routeName);
 
