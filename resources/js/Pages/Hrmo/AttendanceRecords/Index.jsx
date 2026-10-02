@@ -158,12 +158,12 @@ export default function Index({ trainees, filters, departments, statuses }) {
                                     ) : (
                                         traineesData.data.map((trainee) => (
                                             <tr key={trainee.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                                <td className="px-2 sm:px-3 py-1.5 sm:py-2 font-medium text-gray-900 dark:text-gray-100">{trainee.name}</td>
+                                            <td className="px-2 sm:px-3 py-1.5 sm:py-2 font-medium text-gray-900 dark:text-gray-100 uppercase">{trainee.name}</td>
                                                 <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-gray-500 dark:text-gray-400">{trainee.email}</td>
                                                 <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-gray-500 dark:text-gray-400">{trainee.department}</td>
-                                                <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-center text-gray-700 dark:text-gray-300">{trainee.required_hours}</td>
-                                                <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-center text-green-600 dark:text-green-400 font-medium">{trainee.rendered_hours}</td>
-                                                <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-center text-yellow-600 dark:text-yellow-400">{trainee.remaining_hours}</td>
+                                               <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-center text-gray-700 dark:text-gray-300">{trainee.required_hours} hrs</td>
+<td className="px-2 sm:px-3 py-1.5 sm:py-2 text-center text-green-600 dark:text-green-400 font-medium">{trainee.rendered_hours} hrs</td>
+<td className="px-2 sm:px-3 py-1.5 sm:py-2 text-center text-yellow-600 dark:text-yellow-400">{trainee.remaining_hours} hrs</td>
                                                 <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-center">
                                                     <div className="flex items-center gap-1 justify-center">
                                                         <div className="w-12 sm:w-16 bg-gray-200 dark:bg-gray-600 rounded-full h-1.5">

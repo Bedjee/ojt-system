@@ -37,21 +37,25 @@ class AttendanceRecordController extends Controller
             $query->where('status', $request->status);
         }
 
-        $trainees = $query->orderBy('first_name')
-            ->paginate(15)
-            ->through(function ($trainee) {
-                return [
-                    'id' => $trainee->id,
-                    'name' => $trainee->full_name,
-                    'email' => $trainee->email,
-                    'department' => $trainee->department?->name ?? 'N/A',
-                    'status' => $trainee->status,
-                    'required_hours' => $trainee->required_hours,
-                    'rendered_hours' => $trainee->rendered_hours,
-                    'remaining_hours' => $trainee->remaining_hours,
-                    'progress' => $trainee->completion_percentage,
-                ];
-            });
+       $trainees = $query->orderBy('first_name')
+    ->paginate(15)
+    ->through(function ($trainee) {
+        // Round rendered first, then derive remaining from it,
+        // so rendered + remaining always equals required (no off-by-one).
+        $renderedRounded = (int) round($trainee->rendered_hours);
+
+        return [
+            'id' => $trainee->id,
+            'name' => $trainee->full_name,
+            'email' => $trainee->email,
+            'department' => $trainee->department?->name ?? 'N/A',
+            'status' => $trainee->status,
+            'required_hours' => (int) $trainee->required_hours,
+            'rendered_hours' => $renderedRounded,
+            'remaining_hours' => max(0, (int) $trainee->required_hours - $renderedRounded),
+            'progress' => $trainee->completion_percentage,
+        ];
+    });
 
         // For filter dropdowns
         $departments = Department::where('is_active', true)
