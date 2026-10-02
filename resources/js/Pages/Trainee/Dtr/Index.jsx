@@ -1,5 +1,6 @@
 import TraineeLayout from '@/Layouts/TraineeLayout';
 import { Head, useForm } from '@inertiajs/react';
+import { useEffect } from 'react';
 import { formatHours } from '@/Helpers/formatTime';
 import {
     CalendarIcon,
@@ -12,11 +13,20 @@ import {
     XCircleIcon,
 } from '@heroicons/react/24/outline';
 
-export default function Index({ trainee, records, month, half, summary }) {
+export default function Index({ trainee, records, month, half, summary, periods = [] }) {
     const { data, setData, get } = useForm({
         month: month,
         half: half || 'first',
     });
+
+    // Keep local form state in sync with server (e.g. when backend
+    // falls back from an invalid period like week5 on February).
+    useEffect(() => {
+        if (data.month !== month || data.half !== half) {
+            setData({ month, half });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [month, half]);
 
     function handleMonthChange(e) {
         const newMonth = e.target.value;
@@ -25,12 +35,16 @@ export default function Index({ trainee, records, month, half, summary }) {
     }
 
     function setHalf(newHalf) {
+        if (newHalf === data.half) return;
         setData('half', newHalf);
         get(route('trainee.dtr.index'), { month: data.month, half: newHalf });
     }
 
     function handleDownload() {
-        window.location.href = route('trainee.dtr.download') + '?month=' + data.month + '&half=' + data.half;
+        window.location.href =
+            route('trainee.dtr.download') +
+            '?month=' + data.month +
+            '&half=' + data.half;
     }
 
     const statusBadge = (status) => {
@@ -41,6 +55,9 @@ export default function Index({ trainee, records, month, half, summary }) {
         };
         return classes[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
     };
+
+    const halves = periods.filter((p) => p.group === 'half');
+    const weeks  = periods.filter((p) => p.group === 'week');
 
     return (
         <TraineeLayout header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">My DTR</h2>}>
@@ -94,46 +111,75 @@ export default function Index({ trainee, records, month, half, summary }) {
                         </div>
                     </div>
 
-                    {/* Month Selector + Half Toggles + Download */}
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-6">
-                        <div className="flex flex-wrap items-center gap-3">
-                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Month:</label>
-                            <input
-                                type="month"
-                                value={data.month}
-                                onChange={handleMonthChange}
-                                className="w-full sm:w-auto border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-                            />
-                            <div className="flex rounded-lg shadow-sm border border-gray-300 dark:border-gray-600 overflow-hidden">
-                                <button
-                                    onClick={() => setHalf('first')}
-                                    className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                                        data.half === 'first'
-                                            ? 'bg-blue-600 text-white dark:bg-blue-700'
-                                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                    }`}
-                                >
-                                    1–15
-                                </button>
-                                <button
-                                    onClick={() => setHalf('second')}
-                                    className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                                        data.half === 'second'
-                                            ? 'bg-blue-600 text-white dark:bg-blue-700'
-                                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                    }`}
-                                >
-                                    16–31
-                                </button>
+                    {/* Month Selector + Period Selector + Download */}
+                    <div className="flex flex-col gap-4 mb-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Month:</label>
+                                <input
+                                    type="month"
+                                    value={data.month}
+                                    onChange={handleMonthChange}
+                                    className="w-full sm:w-auto border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                                />
+                            </div>
+                            <button
+                                onClick={handleDownload}
+                                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium shadow-sm"
+                            >
+                                <ArrowDownTrayIcon className="w-4 h-4" />
+                                Download PDF
+                            </button>
+                        </div>
+
+                        {/* Period selector */}
+                        <div className="flex flex-col gap-2">
+                            <div className="flex flex-wrap items-center gap-3">
+                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    Semi-monthly
+                                </span>
+                                <div className="flex rounded-lg shadow-sm border border-gray-300 dark:border-gray-600 overflow-hidden">
+                                    {halves.map((p) => (
+                                        <button
+                                            key={p.value}
+                                            onClick={() => setHalf(p.value)}
+                                            className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                                                data.half === p.value
+                                                    ? 'bg-blue-600 text-white dark:bg-blue-700'
+                                                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                            }`}
+                                        >
+                                            {p.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-3">
+                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    Weekly
+                                </span>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {weeks.map((p) => (
+                                        <button
+                                            key={p.value}
+                                            onClick={() => setHalf(p.value)}
+                                            title={`${p.label} (${p.range})`}
+                                            className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
+                                                data.half === p.value
+                                                    ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-700 dark:border-blue-700'
+                                                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                            }`}
+                                        >
+                                            {p.label}
+                                            <span className="ml-1 text-[11px] font-normal opacity-80">
+                                                ({p.range})
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
-                        <button
-                            onClick={handleDownload}
-                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium shadow-sm"
-                        >
-                            <ArrowDownTrayIcon className="w-4 h-4" />
-                            Download PDF
-                        </button>
                     </div>
 
                     {/* Summary Cards */}
@@ -175,7 +221,7 @@ export default function Index({ trainee, records, month, half, summary }) {
                         {/* Mobile Card View */}
                         <div className="sm:hidden divide-y divide-gray-200 dark:divide-gray-700">
                             {records.length === 0 ? (
-                                <div className="p-6 text-center text-gray-500 dark:text-gray-400">No attendance records for this month.</div>
+                                <div className="p-6 text-center text-gray-500 dark:text-gray-400">No attendance records for this period.</div>
                             ) : (
                                 records.map((record) => (
                                     <div key={record.date} className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
@@ -219,7 +265,7 @@ export default function Index({ trainee, records, month, half, summary }) {
                                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                     {records.length === 0 ? (
                                         <tr>
-                                            <td colSpan="7" className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">No attendance records for this month.</td>
+                                            <td colSpan="7" className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">No attendance records for this period.</td>
                                         </tr>
                                     ) : (
                                         records.map((record) => (

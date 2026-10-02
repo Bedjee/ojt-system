@@ -38,7 +38,9 @@ class AttendanceService
         throw new \Exception('You have already completed your OJT. No further attendance allowed.');
     }
 
-    $now = $currentTime ? Carbon::parse($currentTime) : Carbon::now();
+    $now = $currentTime
+    ? Carbon::parse($currentTime)->tz(config('app.timezone'))
+    : Carbon::now(config('app.timezone'));
 
     // 3. Geofencing validation (if department has coordinates and geofencing enabled)
     $department = $trainee->department;
@@ -227,24 +229,26 @@ protected function determineAction(Carbon $now, Attendance $attendance)
     /**
      * Record the action (set the appropriate datetime field).
      */
-    protected function recordAction(Attendance &$attendance, string $action, Carbon $now)
-    {
-        switch ($action) {
-            case 'morning_time_in':
-                $attendance->morning_time_in = $now;
-                break;
-            case 'lunch_time_out':
-                $attendance->lunch_time_out = $now;
-                break;
-            case 'afternoon_time_in':
-                $attendance->afternoon_time_in = $now;
-                break;
-            case 'time_out':
-                $attendance->time_out = $now;
-                break;
-        }
-        $attendance->save();
+   protected function recordAction(Attendance &$attendance, string $action, Carbon $now)
+{
+    $at = $now->copy()->second(0);   // ← zero out seconds for consistency
+
+    switch ($action) {
+        case 'morning_time_in':
+            $attendance->morning_time_in = $at;
+            break;
+        case 'lunch_time_out':
+            $attendance->lunch_time_out = $at;
+            break;
+        case 'afternoon_time_in':
+            $attendance->afternoon_time_in = $at;
+            break;
+        case 'time_out':
+            $attendance->time_out = $at;
+            break;
     }
+    $attendance->save();
+}
 
     /**
      * Calculate morning, afternoon, and total hours after time out.
@@ -270,51 +274,47 @@ protected function determineAction(Carbon $now, Attendance $attendance)
  */
 protected function calculateDailyHours(Attendance $attendance)
 {
-    $morningHours = 0;
-    $afternoonHours = 0;
+    $dateStr = $attendance->date->format('Y-m-d');
 
-    // Anchor schedule to the attendance date
-    $date = $attendance->date;
+    // Anchor to AttendanceSetting, not hardcoded times
+    $morningStart   = Carbon::parse($dateStr.' '.$this->settings->morning_time_in_start->format('H:i:s'));
+    $morningEnd     = Carbon::parse($dateStr.' '.$this->settings->lunch_time_out_start->format('H:i:s'));
+    $afternoonStart = Carbon::parse($dateStr.' '.$this->settings->afternoon_time_in_start->format('H:i:s'));
+    $afternoonEnd   = Carbon::parse($dateStr.' '.$this->settings->time_out_start->format('H:i:s'));
 
-    $morningStart = Carbon::parse($date->format('Y-m-d') . ' 08:00:00');
-    $morningEnd   = Carbon::parse($date->format('Y-m-d') . ' 12:00:00');
-    $afternoonStart = Carbon::parse($date->format('Y-m-d') . ' 13:00:00');
-    $afternoonEnd   = Carbon::parse($date->format('Y-m-d') . ' 17:00:00');
+    $morningCap   = 4;   // match your policy
+    $afternoonCap = 4;
+    $dailyCap     = 8;
 
     // ---- Morning ----
+    $morningHours = 0;
     if ($attendance->morning_time_in && $attendance->lunch_time_out) {
-        $morningIn  = $attendance->morning_time_in;
-        $lunchOut   = $attendance->lunch_time_out;
+        $start = $attendance->morning_time_in->gt($morningStart) ? $attendance->morning_time_in : $morningStart;
+        $end   = $attendance->lunch_time_out->lt($morningEnd)    ? $attendance->lunch_time_out : $morningEnd;
 
-        $actualStart = $morningIn->gt($morningStart) ? $morningIn : $morningStart;
-        $actualEnd   = $lunchOut->lt($morningEnd) ? $lunchOut : $morningEnd;
-
-        if ($actualEnd->gt($actualStart)) {
-            $morningHours = $actualStart->diffInHours($actualEnd, true); // true = float
+        if ($end->gt($start)) {
+            $morningHours = min($start->floatDiffInHours($end), $morningCap);
         }
     }
 
     // ---- Afternoon ----
+    $afternoonHours = 0;
     if ($attendance->afternoon_time_in && $attendance->time_out) {
-        $afternoonIn = $attendance->afternoon_time_in;
-        $timeOut     = $attendance->time_out;
+        $start = $attendance->afternoon_time_in->gt($afternoonStart) ? $attendance->afternoon_time_in : $afternoonStart;
+        $end   = $attendance->time_out->lt($afternoonEnd)            ? $attendance->time_out        : $afternoonEnd;
 
-        $actualStart = $afternoonIn->gt($afternoonStart) ? $afternoonIn : $afternoonStart;
-        $actualEnd   = $timeOut->lt($afternoonEnd) ? $timeOut : $afternoonEnd;
-
-        if ($actualEnd->gt($actualStart)) {
-            $afternoonHours = $actualStart->diffInHours($actualEnd, true);
+        if ($end->gt($start)) {
+            $afternoonHours = min($start->floatDiffInHours($end), $afternoonCap);
         }
     }
 
-    $totalHours = $morningHours + $afternoonHours;
-    $totalHours = min($totalHours, 8);
+    $totalHours = min($morningHours + $afternoonHours, $dailyCap);
 
     $attendance->morning_hours   = round($morningHours, 2);
     $attendance->afternoon_hours = round($afternoonHours, 2);
     $attendance->total_hours     = round($totalHours, 2);
 
-    // Status based on completeness
+    // Status
     if ($attendance->morning_time_in && $attendance->lunch_time_out &&
         $attendance->afternoon_time_in && $attendance->time_out) {
         $attendance->status = 'present';
@@ -327,7 +327,6 @@ protected function calculateDailyHours(Attendance $attendance)
 
     $attendance->save();
 }
-
 
 
     /**
