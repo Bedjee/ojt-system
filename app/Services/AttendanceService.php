@@ -281,41 +281,23 @@ public function calculateDailyHours(Attendance $attendance)
     $afternoonStart = Carbon::parse($dateStr.' '.$this->settings->afternoon_time_in_start->format('H:i:s'));
     $afternoonEnd   = Carbon::parse($dateStr.' '.$this->settings->time_out_start->format('H:i:s'));
 
-    $morningCap   = 4;
-    $afternoonCap = 4;
-    $dailyCap     = 8;
+    $morningCap = 4; $afternoonCap = 4; $dailyCap = 8;
 
-    // ---------- MORNING ----------
-    // Compute as long as we have a START anchor (morning_time_in).
-    // If lunch_time_out is missing, credit up to the configured lunch start.
+    // ---------- MORNING: BOTH anchors required ----------
     $morningHours = 0;
-    if ($attendance->morning_time_in) {
-        $start = $attendance->morning_time_in->gt($morningStart)
-            ? $attendance->morning_time_in
-            : $morningStart;
-
-        $end = $attendance->lunch_time_out
-            ? ($attendance->lunch_time_out->lt($morningEnd) ? $attendance->lunch_time_out : $morningEnd)
-            : $morningEnd;
-
+    if ($attendance->morning_time_in && $attendance->lunch_time_out) {
+        $start = $attendance->morning_time_in->gt($morningStart) ? $attendance->morning_time_in : $morningStart;
+        $end   = $attendance->lunch_time_out->lt($morningEnd)    ? $attendance->lunch_time_out : $morningEnd;
         if ($end->gt($start)) {
             $morningHours = min($start->floatDiffInHours($end), $morningCap);
         }
     }
 
-    // ---------- AFTERNOON ----------
-    // Compute as long as we have a START anchor (afternoon_time_in).
-    // If time_out is missing, credit up to the configured time-out start.
+    // ---------- AFTERNOON: BOTH anchors required ----------
     $afternoonHours = 0;
-    if ($attendance->afternoon_time_in) {
-        $start = $attendance->afternoon_time_in->gt($afternoonStart)
-            ? $attendance->afternoon_time_in
-            : $afternoonStart;
-
-        $end = $attendance->time_out
-            ? ($attendance->time_out->lt($afternoonEnd) ? $attendance->time_out : $afternoonEnd)
-            : $afternoonEnd;
-
+    if ($attendance->afternoon_time_in && $attendance->time_out) {
+        $start = $attendance->afternoon_time_in->gt($afternoonStart) ? $attendance->afternoon_time_in : $afternoonStart;
+        $end   = $attendance->time_out->lt($afternoonEnd)             ? $attendance->time_out        : $afternoonEnd;
         if ($end->gt($start)) {
             $afternoonHours = min($start->floatDiffInHours($end), $afternoonCap);
         }
@@ -327,7 +309,6 @@ public function calculateDailyHours(Attendance $attendance)
     $attendance->afternoon_hours = round($afternoonHours, 2);
     $attendance->total_hours     = round($totalHours, 2);
 
-    // Status
     $hasAll = $attendance->morning_time_in && $attendance->lunch_time_out
            && $attendance->afternoon_time_in && $attendance->time_out;
 
@@ -338,7 +319,6 @@ public function calculateDailyHours(Attendance $attendance)
 
     $attendance->save();
 }
-
 
     /**
      * Build human‑centered feedback for the trainee.
